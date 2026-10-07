@@ -1,61 +1,149 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="robots" content="noindex, nofollow">
-<title>Stitch Me Tender</title>
-<meta name="description" content="Two wordless monster-romance card battler prototypes. Best on a phone.">
-<meta property="og:title" content="Stitch Me Tender">
-<meta property="og:description" content="Two wordless monster-romance card battler prototypes. Best on a phone.">
-<style>
-  :root { --bg: #160b1e; --card: #241330; --ink: #f3ead7; --muted: #b9a9c9; --pink: #ff3d8b; --cyan: #3df2ff; --lime: #b6ff3d; --gold: #ffd23f; }
-  * { box-sizing: border-box; }
-  body { margin: 0; min-height: 100vh; background: radial-gradient(120% 80% at 50% 0%, #2b1f3a 0%, var(--bg) 60%); color: var(--ink);
-    font: 16px/1.5 ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", sans-serif; padding: 48px 16px 32px; }
-  main { max-width: 760px; margin: 0 auto; }
-  h1 { font-size: clamp(36px, 8vw, 56px); line-height: 1; margin: 0 0 8px; letter-spacing: -0.02em; }
-  h1 span { color: var(--pink); }
-  .lede { color: var(--muted); margin: 0 0 32px; max-width: 520px; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
-  a.card { display: flex; flex-direction: column; gap: 10px; text-decoration: none; color: inherit; background: var(--card);
-    border-radius: 20px; padding: 20px; border: 2px solid transparent; transition: transform .15s ease, border-color .15s ease; }
-  a.card:hover, a.card:focus-visible { transform: translateY(-3px); border-color: var(--accent); outline: none; }
-  .art { height: 150px; border-radius: 14px; display: grid; place-items: center; background: var(--artbg); }
-  .card h2 { margin: 4px 0 0; font-size: 24px; }
-  .card h2 .r { color: var(--pink); }
-  .card p { margin: 0; color: var(--muted); font-size: 15px; }
-  .play { margin-top: auto; align-self: flex-start; background: var(--accent); color: #160b1e; font-weight: 700; padding: 8px 18px; border-radius: 999px; }
-  .tags { display: flex; flex-wrap: wrap; gap: 6px; }
-  .tags span { font-size: 12px; padding: 2px 10px; border-radius: 999px; background: #ffffff14; color: var(--muted); }
-  footer { margin-top: 40px; color: #7d6d8d; font-size: 13px; }
-</style>
-</head>
-<body>
-<main>
-  <h1>Stitch Me <span>Tender</span></h1>
-  <p class="lede">Two games, one brief: a card battler, a dating sim, a post-apocalyptic wasteland, gacha, press-your-luck, you play the villain, and not a single word or number on screen. Best played on a phone. Tap the robot for autoplay.</p>
-  <div class="grid">
-    <a class="card" href="necromancer/" style="--accent: var(--lime); --artbg: linear-gradient(#2b1f3a, #47305e 70%, #c9a26b 70%);">
-      <div class="art" aria-hidden="true">
-        <svg width="120" height="120" viewBox="-60 -60 120 120"><g stroke="#1b1420" stroke-width="5"><path d="M0 40 C-60 0 -45 -45 -18 -40 C-8 -38 -2 -30 0 -24 C2 -30 8 -38 18 -40 C45 -45 60 0 0 40Z" fill="#ff6b8b"/></g><path d="M-26 -18 L18 22 M-16 -24 L-22 -14 M-6 -12 L-12 -2 M4 -2 L-2 8" stroke="#1b1420" stroke-width="4" fill="none"/><path d="M30 -48 L14 -12 L26 -12 L16 16 L40 -22 L28 -22 L38 -48Z" fill="#ffd23f" stroke="#1b1420" stroke-width="4"/></svg>
-      </div>
-      <h2>nec<span class="r">R</span>omancer</h2>
-      <p>Dig up body parts, stitch a sweetheart, court it with a sack of gifts (pray for no dead rats), then send it into card battles against three rival flesh-harvesters.</p>
-      <div class="tags"><span>gacha digs</span><span>bag-draw dating</span><span>deck from body parts</span></div>
-      <span class="play">Play</span>
-    </a>
-    <a class="card" href="kleptoromancer/" style="--accent: var(--pink); --artbg: linear-gradient(#12303a, #e0703a);">
-      <div class="art" aria-hidden="true">
-        <svg width="200" height="100" viewBox="0 0 200 100"><rect x="4" y="12" width="192" height="76" rx="20" fill="#160b1e" stroke="#3df2ff" stroke-width="3"/><g transform="translate(50 50)"><ellipse rx="26" ry="15" fill="#160b1e"/><ellipse cx="-9" cy="-4" rx="12" ry="7" fill="#ff3d8b"/><ellipse cx="9" cy="-4" rx="12" ry="7" fill="#ff3d8b"/><ellipse cy="5" rx="20" ry="8" fill="#ff3d8b"/><path d="M-21 0 H21" stroke="#160b1e" stroke-width="3"/></g><path d="M100 68 C70 48 76 28 90 28 C96 28 100 34 100 38 C100 34 104 28 110 28 C124 28 130 48 100 68Z" fill="#ff3d8b"/><g transform="translate(150 50)"><ellipse rx="26" ry="17" fill="#160b1e"/><ellipse rx="22" ry="13" fill="#8a1030"/><path d="M-16 -12 L-11 -3 L-6 -12 L-1 -3 L4 -12 L9 -3 L14 -12Z M-16 12 L-11 3 L-6 12 L-1 3 L4 12 L9 3 L14 12Z" fill="#fff"/></g></svg>
-      </div>
-      <h2>klepto<span class="r">R</span>omancer</h2>
-      <p>You're a mustache-twirling heart-thief in a derelict neon fairground. Flirt rival wranglers' monsters into the love-tester's sweet zone and steal them. Push your luck too far and they bite.</p>
-      <div class="tags"><span>blackjack flirting</span><span>steal-a-monster</span><span>capsule machine</span></div>
-      <span class="play">Play</span>
-    </a>
-  </div>
-  <footer>Prototypes built in a day. Placeholder names. Sound on for the full experience.</footer>
-</main>
-</body>
-</html>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="robots" content="noindex, nofollow">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Stitch Me Tender</title>
+<meta name="description" content="Two wordless monster-romance card battler prototypes by Ankith Harathi.">
+<meta property="og:title" content="Stitch Me Tender"><meta property="og:description" content="Two wordless monster-romance card battler prototypes."><meta property="og:image" content="https://ankithharathi.github.io/monster-crush/necromancer/media/og.jpg">
+<link rel="icon" href="necromancer/media/icon-180.png"><style>:root{--accent:#ff5c86;--accent2:#3df2ff;--glow:#2b1f3a}:root {
+  --bg: #ffffff; --fg: #1d1d1f; --muted: #6e6e73; --sep: #d2d2d7; --card: #f5f5f7; --play-ink: #ffffff;
+  --radius: 22.37%;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #000000; --fg: #f5f5f7; --muted: #a1a1a6; --sep: #38383a; --card: #1c1c1e; }
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--fg);
+  font: 17px/1.47 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  letter-spacing: -0.01em; -webkit-font-smoothing: antialiased; overflow-x: hidden;
+}
+a { color: inherit; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 0 16px; }
+@media (min-width: 735px) { .wrap { padding: 0 32px; } }
+.muted { color: var(--muted); }
+.small { font-size: 14px; margin: 2px 0 10px; }
+h1, h2, h3 { letter-spacing: -0.02em; }
+h2 { font-size: 22px; margin: 0 0 14px; font-weight: 700; }
+.r { color: var(--accent); }
+
+/* top bar */
+.top { position: sticky; top: 0; z-index: 20; height: 48px; display: flex; align-items: center; padding: 0 16px;
+  background: color-mix(in srgb, var(--bg) 78%, transparent); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 1px solid color-mix(in srgb, var(--sep) 60%, transparent); }
+.crumb { font-weight: 600; font-size: 15px; text-decoration: none; color: var(--fg); opacity: .9; }
+.crumb::before { content: '‹'; font-size: 22px; line-height: 0; margin-right: 6px; position: relative; top: 1px; color: var(--accent); }
+
+/* header */
+.hero { position: relative; padding: 28px 0 26px; overflow: hidden; }
+.hero-bg { position: absolute; inset: -40px; background-size: cover; background-position: 50% 30%; filter: blur(42px) saturate(140%); opacity: .38; transform: scale(1.1); }
+.hero-bg::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 0%, var(--bg) 92%); }
+@media (prefers-color-scheme: light) { .hero-bg { opacity: .22; } }
+.hero-grid { position: relative; display: grid; grid-template-columns: auto 1fr; gap: 20px; align-items: start; }
+.app-icon { width: 118px; height: 118px; border-radius: var(--radius); box-shadow: 0 0 0 1px rgba(127,127,127,.18), 0 10px 30px rgba(0,0,0,.28); display: block; }
+@media (min-width: 735px) { .app-icon { width: 230px; height: 230px; } .hero-grid { gap: 34px; } .hero { padding: 48px 0 40px; } }
+.hero-text h1 { font-size: 24px; line-height: 1.14; margin: 2px 0 4px; font-weight: 700; }
+@media (min-width: 735px) { .hero-text h1 { font-size: 40px; } }
+.subtitle { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.3; }
+@media (min-width: 735px) { .subtitle { font-size: 21px; } }
+.dev { margin: 6px 0 0; font-size: 15px; }
+.dev a { color: var(--accent); text-decoration: none; }
+.actions { display: flex; align-items: center; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
+.play { display: inline-flex; align-items: center; justify-content: center; min-width: 88px; height: 32px; padding: 0 20px; border-radius: 999px;
+  background: var(--accent); color: var(--play-ink); font-weight: 700; font-size: 15px; letter-spacing: .04em; text-decoration: none;
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 45%, transparent); transition: transform .12s ease, filter .12s ease; }
+.play:hover { filter: brightness(1.08); } .play:active { transform: scale(.96); }
+@media (min-width: 735px) { .play { height: 40px; min-width: 120px; font-size: 17px; } }
+.note { font-size: 12px; color: var(--muted); order: 3; flex-basis: 100%; margin-top: -4px; }
+.actions .share { order: 2; }
+.share { margin-left: auto; width: 34px; height: 34px; border-radius: 50%; border: 0; background: transparent; color: var(--accent); cursor: pointer; display: grid; place-items: center; position: relative; }
+.share.copied::after { content: 'Link copied'; position: absolute; right: 0; top: 38px; white-space: nowrap; font-size: 12px; background: var(--card); color: var(--fg); padding: 4px 8px; border-radius: 8px; }
+
+/* at-a-glance strip */
+.stats { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(108px, 1fr); overflow-x: auto; scrollbar-width: none;
+  border-top: 1px solid var(--sep); border-bottom: 1px solid var(--sep); margin: 0 -16px; padding: 12px 0; }
+.stats::-webkit-scrollbar { display: none; }
+@media (min-width: 735px) { .stats { margin: 0; } }
+.stat { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 2px 10px; border-left: 1px solid var(--sep); }
+.stat:first-child { border-left: 0; }
+.stat .k { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.stat .v { font-size: 22px; font-weight: 700; line-height: 1.25; margin: 2px 0; color: var(--fg); }
+.stat .s { font-size: 12px; color: var(--muted); line-height: 1.2; }
+
+/* sections */
+.block { padding: 26px 0; border-bottom: 1px solid var(--sep); }
+.row-head { display: flex; align-items: baseline; justify-content: space-between; }
+.row-head h2 { margin: 0; }
+
+/* screenshots */
+.shots { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; margin: 0 -16px; padding: 4px 16px 10px; scrollbar-width: none; }
+.shots::-webkit-scrollbar { display: none; }
+@media (min-width: 735px) { .shots { margin: 0; padding: 4px 0 10px; } }
+.shot { flex: 0 0 auto; width: clamp(196px, 44vw, 292px); padding: 0; border: 0; background: none; cursor: zoom-in; scroll-snap-align: start; border-radius: 20px; }
+.shot img { display: block; width: 100%; height: auto; aspect-ratio: 1290 / 2796; border-radius: 20px; box-shadow: 0 0 0 1px rgba(127,127,127,.22); background: var(--card); }
+.shot:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.device { font-size: 13px; color: var(--muted); margin: 6px 0 0; }
+
+/* description */
+.desc p { margin: 0 0 12px; }
+.clamp { max-height: 6.9em; overflow: hidden; position: relative; }
+.clamp:not(.open)::after { content: ''; position: absolute; right: 0; bottom: 0; width: 60%; height: 1.5em; background: linear-gradient(90deg, transparent, var(--bg) 60%); }
+.clamp.open { max-height: none; }
+.more { border: 0; background: none; color: var(--accent); font: inherit; padding: 0; cursor: pointer; float: right; margin-top: -1.5em; position: relative; }
+.devline { clear: both; display: flex; flex-direction: column; margin-top: 14px; }
+.devline a { color: var(--accent); text-decoration: none; font-size: 15px; }
+.devline span { font-size: 12px; color: var(--muted); }
+
+/* how it plays */
+.steps { display: grid; gap: 12px; grid-template-columns: 1fr; }
+@media (min-width: 640px) { .steps { grid-template-columns: 1fr 1fr; } }
+.step { display: flex; gap: 14px; align-items: center; background: var(--card); border-radius: 18px; padding: 12px 16px 12px 10px; }
+.step img { width: 76px; height: 76px; object-fit: contain; flex: 0 0 auto; filter: drop-shadow(0 6px 8px rgba(0,0,0,.25)); }
+.step h3 { margin: 0 0 2px; font-size: 17px; display: flex; align-items: center; gap: 8px; }
+.step p { margin: 0; font-size: 15px; color: var(--muted); line-height: 1.35; }
+.num { width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 13px; display: grid; place-items: center; }
+
+/* information */
+.info { margin: 0; display: grid; grid-template-columns: 1fr; }
+@media (min-width: 640px) { .info { grid-template-columns: 1fr 1fr 1fr; column-gap: 28px; } }
+.info div { padding: 10px 0; border-bottom: 1px solid var(--sep); }
+.info dt { font-size: 13px; color: var(--muted); }
+.info dd { margin: 2px 0 0; font-size: 15px; }
+
+/* sibling app */
+.other { display: flex; align-items: center; gap: 14px; text-decoration: none; padding: 10px 0; }
+.other img { width: 72px; height: 72px; border-radius: var(--radius); box-shadow: 0 0 0 1px rgba(127,127,127,.18); }
+.other div { display: flex; flex-direction: column; min-width: 0; }
+.other strong { font-size: 17px; font-weight: 600; }
+.other div > span { color: var(--muted); font-size: 14px; }
+.other strong .r { color: var(--accent); }
+.view { margin-left: auto; background: var(--card); color: var(--accent) !important; font-weight: 700; font-size: 14px !important; letter-spacing: .04em; padding: 6px 18px; border-radius: 999px; flex: 0 0 auto; }
+
+footer { color: var(--muted); font-size: 12px; padding: 22px 0 110px; }
+
+/* sticky play bar after the header scrolls away */
+.sticky { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; display: flex; align-items: center; gap: 12px; padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+  background: color-mix(in srgb, var(--bg) 82%, transparent); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-top: 1px solid var(--sep); transform: translateY(110%); transition: transform .25s ease; }
+.sticky.show { transform: none; }
+.sticky img { width: 40px; height: 40px; border-radius: var(--radius); }
+.sticky span { font-weight: 600; flex: 1; }
+
+/* lightbox */
+.lightbox { position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,.92); display: grid; place-items: center; }
+.lightbox[hidden] { display: none; }
+.lightbox img { max-width: min(92vw, 520px); max-height: 92vh; border-radius: 24px; }
+.lb-close, .lb-nav { position: absolute; border: 0; background: rgba(255,255,255,.14); color: #fff; width: 44px; height: 44px; border-radius: 50%; font-size: 22px; cursor: pointer; }
+.lb-close { top: calc(14px + env(safe-area-inset-top)); right: 14px; }
+.lb-nav { top: 50%; transform: translateY(-50%); font-size: 30px; line-height: 1; }
+.prev { left: 12px; } .next { right: 12px; }
+
+/* developer (root) page */
+.dev-page { padding-top: 48px; }
+.eyebrow { text-transform: uppercase; letter-spacing: .08em; font-size: 12px; color: var(--muted); margin: 0; }
+.dev-name { font-size: 34px; margin: 4px 0 8px; }
+.dev-page h2 { margin-top: 30px; }
+.dev-page .other { border-bottom: 1px solid var(--sep); }
+</style></head><body>
+<main class="wrap dev-page"><p class="eyebrow">Developer</p><h1 class="dev-name">Ankith Harathi</h1><p class="muted">Two takes on one brief: a card battler and a dating sim in a post-apocalyptic wasteland, with gacha, press-your-luck, you as the villain, and not a single word on screen.</p>
+<h2>Games</h2><a class="other" href="necromancer/"><img src="necromancer/media/icon-512.png" alt="" width="84" height="84"><div><strong>Stitch Me Tender: nec<span class="r">R</span>omancer</strong><span>Build your soulmate. Some assembly required.</span></div><span class="view">VIEW</span></a><a class="other" href="kleptoromancer/"><img src="kleptoromancer/media/icon-512.png" alt="" width="84" height="84"><div><strong>Stitch Me Tender: klepto<span class="r">R</span>omancer</strong><span>Steal their monsters. Break their hearts.</span></div><span class="view">VIEW</span></a>
+<footer>A playable prototype. © 2026 Ankith Harathi.</footer></main></body></html>

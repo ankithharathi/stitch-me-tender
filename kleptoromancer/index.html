@@ -3,834 +3,271 @@
 <head>
 <meta charset="utf-8">
 <meta name="robots" content="noindex, nofollow">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Stitch Me Tender: kleptoRomancer</title>
-<style>
-  :root { --bg: #160b1e; }
-  html, body { margin: 0; height: 100%; background: var(--bg); overflow: hidden; touch-action: none; }
-  #game { width: 100vw; height: 100vh; height: 100dvh; }
+<meta name="description" content="Steal their monsters. Break their hearts. A wordless monster-romance card battler prototype. Free to play in your browser.">
+<meta property="og:type" content="website"><meta property="og:url" content="https://ankithharathi.github.io/monster-crush/kleptoromancer/">
+<meta property="og:title" content="Stitch Me Tender: kleptoRomancer"><meta property="og:description" content="Steal their monsters. Break their hearts. Free to play in your browser.">
+<meta property="og:image" content="https://ankithharathi.github.io/monster-crush/kleptoromancer/media/og.jpg"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="https://ankithharathi.github.io/monster-crush/kleptoromancer/media/og.jpg">
+<link rel="apple-touch-icon" href="media/icon-180.png"><link rel="icon" href="media/icon-180.png">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)"><meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<style>:root{--accent:#ff3d8b;--accent2:#3df2ff;--glow:#12303a}
+:root {
+  --bg: #ffffff; --fg: #1d1d1f; --muted: #6e6e73; --sep: #d2d2d7; --card: #f5f5f7; --play-ink: #ffffff;
+  --radius: 22.37%;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #000000; --fg: #f5f5f7; --muted: #a1a1a6; --sep: #38383a; --card: #1c1c1e; }
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--fg);
+  font: 17px/1.47 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  letter-spacing: -0.01em; -webkit-font-smoothing: antialiased; overflow-x: hidden;
+}
+a { color: inherit; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 0 16px; }
+@media (min-width: 735px) { .wrap { padding: 0 32px; } }
+.muted { color: var(--muted); }
+.small { font-size: 14px; margin: 2px 0 10px; }
+h1, h2, h3 { letter-spacing: -0.02em; }
+h2 { font-size: 22px; margin: 0 0 14px; font-weight: 700; }
+.r { color: var(--accent); }
+
+/* top bar */
+.top { position: sticky; top: 0; z-index: 20; height: 48px; display: flex; align-items: center; padding: 0 16px;
+  background: color-mix(in srgb, var(--bg) 78%, transparent); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 1px solid color-mix(in srgb, var(--sep) 60%, transparent); }
+.crumb { font-weight: 600; font-size: 15px; text-decoration: none; color: var(--fg); opacity: .9; }
+.crumb::before { content: '‹'; font-size: 22px; line-height: 0; margin-right: 6px; position: relative; top: 1px; color: var(--accent); }
+
+/* header */
+.hero { position: relative; padding: 28px 0 26px; overflow: hidden; }
+.hero-bg { position: absolute; inset: -40px; background-size: cover; background-position: 50% 30%; filter: blur(42px) saturate(140%); opacity: .38; transform: scale(1.1); }
+.hero-bg::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 0%, var(--bg) 92%); }
+@media (prefers-color-scheme: light) { .hero-bg { opacity: .22; } }
+.hero-grid { position: relative; display: grid; grid-template-columns: auto 1fr; gap: 20px; align-items: start; }
+.app-icon { width: 118px; height: 118px; border-radius: var(--radius); box-shadow: 0 0 0 1px rgba(127,127,127,.18), 0 10px 30px rgba(0,0,0,.28); display: block; }
+@media (min-width: 735px) { .app-icon { width: 230px; height: 230px; } .hero-grid { gap: 34px; } .hero { padding: 48px 0 40px; } }
+.hero-text h1 { font-size: 24px; line-height: 1.14; margin: 2px 0 4px; font-weight: 700; }
+@media (min-width: 735px) { .hero-text h1 { font-size: 40px; } }
+.subtitle { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.3; }
+@media (min-width: 735px) { .subtitle { font-size: 21px; } }
+.dev { margin: 6px 0 0; font-size: 15px; }
+.dev a { color: var(--accent); text-decoration: none; }
+.actions { display: flex; align-items: center; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
+.play { display: inline-flex; align-items: center; justify-content: center; min-width: 88px; height: 32px; padding: 0 20px; border-radius: 999px;
+  background: var(--accent); color: var(--play-ink); font-weight: 700; font-size: 15px; letter-spacing: .04em; text-decoration: none;
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 45%, transparent); transition: transform .12s ease, filter .12s ease; }
+.play:hover { filter: brightness(1.08); } .play:active { transform: scale(.96); }
+@media (min-width: 735px) { .play { height: 40px; min-width: 120px; font-size: 17px; } }
+.note { font-size: 12px; color: var(--muted); order: 3; flex-basis: 100%; margin-top: -4px; }
+.actions .share { order: 2; }
+.share { margin-left: auto; width: 34px; height: 34px; border-radius: 50%; border: 0; background: transparent; color: var(--accent); cursor: pointer; display: grid; place-items: center; position: relative; }
+.share.copied::after { content: 'Link copied'; position: absolute; right: 0; top: 38px; white-space: nowrap; font-size: 12px; background: var(--card); color: var(--fg); padding: 4px 8px; border-radius: 8px; }
+
+/* at-a-glance strip */
+.stats { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(108px, 1fr); overflow-x: auto; scrollbar-width: none;
+  border-top: 1px solid var(--sep); border-bottom: 1px solid var(--sep); margin: 0 -16px; padding: 12px 0; }
+.stats::-webkit-scrollbar { display: none; }
+@media (min-width: 735px) { .stats { margin: 0; } }
+.stat { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 2px 10px; border-left: 1px solid var(--sep); }
+.stat:first-child { border-left: 0; }
+.stat .k { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.stat .v { font-size: 22px; font-weight: 700; line-height: 1.25; margin: 2px 0; color: var(--fg); }
+.stat .s { font-size: 12px; color: var(--muted); line-height: 1.2; }
+
+/* sections */
+.block { padding: 26px 0; border-bottom: 1px solid var(--sep); }
+.row-head { display: flex; align-items: baseline; justify-content: space-between; }
+.row-head h2 { margin: 0; }
+
+/* screenshots */
+.shots { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; margin: 0 -16px; padding: 4px 16px 10px; scrollbar-width: none; }
+.shots::-webkit-scrollbar { display: none; }
+@media (min-width: 735px) { .shots { margin: 0; padding: 4px 0 10px; } }
+.shot { flex: 0 0 auto; width: clamp(196px, 44vw, 292px); padding: 0; border: 0; background: none; cursor: zoom-in; scroll-snap-align: start; border-radius: 20px; }
+.shot img { display: block; width: 100%; height: auto; aspect-ratio: 1290 / 2796; border-radius: 20px; box-shadow: 0 0 0 1px rgba(127,127,127,.22); background: var(--card); }
+.shot:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.device { font-size: 13px; color: var(--muted); margin: 6px 0 0; }
+
+/* description */
+.desc p { margin: 0 0 12px; }
+.clamp { max-height: 6.9em; overflow: hidden; position: relative; }
+.clamp:not(.open)::after { content: ''; position: absolute; right: 0; bottom: 0; width: 60%; height: 1.5em; background: linear-gradient(90deg, transparent, var(--bg) 60%); }
+.clamp.open { max-height: none; }
+.more { border: 0; background: none; color: var(--accent); font: inherit; padding: 0; cursor: pointer; float: right; margin-top: -1.5em; position: relative; }
+.devline { clear: both; display: flex; flex-direction: column; margin-top: 14px; }
+.devline a { color: var(--accent); text-decoration: none; font-size: 15px; }
+.devline span { font-size: 12px; color: var(--muted); }
+
+/* how it plays */
+.steps { display: grid; gap: 12px; grid-template-columns: 1fr; }
+@media (min-width: 640px) { .steps { grid-template-columns: 1fr 1fr; } }
+.step { display: flex; gap: 14px; align-items: center; background: var(--card); border-radius: 18px; padding: 12px 16px 12px 10px; }
+.step img { width: 76px; height: 76px; object-fit: contain; flex: 0 0 auto; filter: drop-shadow(0 6px 8px rgba(0,0,0,.25)); }
+.step h3 { margin: 0 0 2px; font-size: 17px; display: flex; align-items: center; gap: 8px; }
+.step p { margin: 0; font-size: 15px; color: var(--muted); line-height: 1.35; }
+.num { width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 13px; display: grid; place-items: center; }
+
+/* information */
+.info { margin: 0; display: grid; grid-template-columns: 1fr; }
+@media (min-width: 640px) { .info { grid-template-columns: 1fr 1fr 1fr; column-gap: 28px; } }
+.info div { padding: 10px 0; border-bottom: 1px solid var(--sep); }
+.info dt { font-size: 13px; color: var(--muted); }
+.info dd { margin: 2px 0 0; font-size: 15px; }
+
+/* sibling app */
+.other { display: flex; align-items: center; gap: 14px; text-decoration: none; padding: 10px 0; }
+.other img { width: 72px; height: 72px; border-radius: var(--radius); box-shadow: 0 0 0 1px rgba(127,127,127,.18); }
+.other div { display: flex; flex-direction: column; min-width: 0; }
+.other strong { font-size: 17px; font-weight: 600; }
+.other div > span { color: var(--muted); font-size: 14px; }
+.other strong .r { color: var(--accent); }
+.view { margin-left: auto; background: var(--card); color: var(--accent) !important; font-weight: 700; font-size: 14px !important; letter-spacing: .04em; padding: 6px 18px; border-radius: 999px; flex: 0 0 auto; }
+
+footer { color: var(--muted); font-size: 12px; padding: 22px 0 110px; }
+
+/* sticky play bar after the header scrolls away */
+.sticky { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; display: flex; align-items: center; gap: 12px; padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+  background: color-mix(in srgb, var(--bg) 82%, transparent); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-top: 1px solid var(--sep); transform: translateY(110%); transition: transform .25s ease; }
+.sticky.show { transform: none; }
+.sticky img { width: 40px; height: 40px; border-radius: var(--radius); }
+.sticky span { font-weight: 600; flex: 1; }
+
+/* lightbox */
+.lightbox { position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,.92); display: grid; place-items: center; }
+.lightbox[hidden] { display: none; }
+.lightbox img { max-width: min(92vw, 520px); max-height: 92vh; border-radius: 24px; }
+.lb-close, .lb-nav { position: absolute; border: 0; background: rgba(255,255,255,.14); color: #fff; width: 44px; height: 44px; border-radius: 50%; font-size: 22px; cursor: pointer; }
+.lb-close { top: calc(14px + env(safe-area-inset-top)); right: 14px; }
+.lb-nav { top: 50%; transform: translateY(-50%); font-size: 30px; line-height: 1; }
+.prev { left: 12px; } .next { right: 12px; }
+
+/* developer (root) page */
+.dev-page { padding-top: 48px; }
+.eyebrow { text-transform: uppercase; letter-spacing: .08em; font-size: 12px; color: var(--muted); margin: 0; }
+.dev-name { font-size: 34px; margin: 4px 0 8px; }
+.dev-page h2 { margin-top: 30px; }
+.dev-page .other { border-bottom: 1px solid var(--sep); }
 </style>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.80.1/phaser.min.js" crossorigin="anonymous"></script>
 </head>
 <body>
-<div id="game"></div>
+<nav class="top"><a class="crumb" href="../">Stitch Me Tender</a></nav>
+<header class="hero">
+  <div class="hero-bg" style="background-image:url('media/shot-01.jpg')"></div>
+  <div class="wrap hero-grid">
+    <img class="app-icon" src="media/icon-512.png" alt="Stitch Me Tender: kleptoRomancer app icon" width="230" height="230">
+    <div class="hero-text">
+      <h1>Stitch Me Tender: klepto<span class="r">R</span>omancer</h1>
+      <p class="subtitle">Steal their monsters. Break their hearts.</p>
+      <p class="dev"><a href="../">Ankith Harathi</a></p>
+      <div class="actions">
+        <a class="play" href="play/" id="play">PLAY</a>
+        <span class="note">Free · Plays in your browser</span>
+        <button class="share" id="share" aria-label="Share"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 3v12M7.5 7.5 12 3l4.5 4.5M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      </div>
+    </div>
+  </div>
+</header>
+<main class="wrap">
+  <section class="stats" aria-label="At a glance">
+    <div class="stat"><span class="k">Price</span><span class="v">Free</span><span class="s">Prototype</span></div><div class="stat"><span class="k">Session</span><span class="v">5–8</span><span class="s">Minutes</span></div><div class="stat"><span class="k">Genre</span><span class="v">♥</span><span class="s">Card Battler</span></div><div class="stat"><span class="k">Language</span><span class="v">None</span><span class="s">Fully wordless</span></div><div class="stat"><span class="k">Age</span><span class="v">9+</span><span class="s">Suggested</span></div><div class="stat"><span class="k">Size</span><span class="v">2.6</span><span class="s">MB</span></div>
+  </section>
+
+  <section class="block">
+    <h2>Preview</h2>
+    <div class="shots" id="shots">
+      <button class="shot" data-i="0" aria-label="Open screenshot 1"><img src="media/shot-01.jpg" alt="kleptoRomancer screenshot 1" loading="eager" width="645" height="1398"></button>
+      <button class="shot" data-i="1" aria-label="Open screenshot 2"><img src="media/shot-02.jpg" alt="kleptoRomancer screenshot 2" loading="eager" width="645" height="1398"></button>
+      <button class="shot" data-i="2" aria-label="Open screenshot 3"><img src="media/shot-03.jpg" alt="kleptoRomancer screenshot 3" loading="eager" width="645" height="1398"></button>
+      <button class="shot" data-i="3" aria-label="Open screenshot 4"><img src="media/shot-04.jpg" alt="kleptoRomancer screenshot 4" loading="lazy" width="645" height="1398"></button>
+      <button class="shot" data-i="4" aria-label="Open screenshot 5"><img src="media/shot-05.jpg" alt="kleptoRomancer screenshot 5" loading="lazy" width="645" height="1398"></button>
+      <button class="shot" data-i="5" aria-label="Open screenshot 6"><img src="media/shot-06.jpg" alt="kleptoRomancer screenshot 6" loading="lazy" width="645" height="1398"></button>
+      <button class="shot" data-i="6" aria-label="Open screenshot 7"><img src="media/shot-07.jpg" alt="kleptoRomancer screenshot 7" loading="lazy" width="645" height="1398"></button>
+    </div>
+    <p class="device">iPhone · Android · Desktop browser</p>
+  </section>
+
+  <section class="block desc">
+    <div class="clamp" id="desc"><p>You play the villain, and a dashing one: a mustache-twirling heart-thief working a derelict neon fairground at the end of the world.</p><p>Rival wranglers parade their mutant monsters on stage. Play charm cards to push each monster’s carnival love-tester into the pink sweet zone. Solid flames always land. Ghost flames flicker and land half the time.</p><p>Smooch at the right moment and the monster is yours while its wrangler sobs. Push too far and it chomps you.</p><p>Stolen monsters join your entourage and guard you. Trade their devotion at the capsule machine for spicier charms, then crash a wasteland wedding to steal the groom.</p><p>The whole game is wordless. Every stat is a flame, a heart or a sound.</p></div>
+    <button class="more" id="more">more</button>
+    <div class="devline"><a href="../">Ankith Harathi</a><span>Developer</span></div>
+  </section>
+
+  <section class="block">
+    <h2>How it plays</h2>
+    <div class="steps">
+      <div class="step"><img src="media/step-mon_0.png" alt="" width="110" height="110"><div><h3><span class="num">1</span>Flirt</h3><p>Charm cards heat up each monster’s love-tester. Matching its belly symbols adds a flame.</p></div></div>
+      <div class="step"><img src="media/step-maw.png" alt="" width="110" height="110"><div><h3><span class="num">2</span>Gamble</h3><p>Ghost flames land half the time. Overshoot the pink zone and it chomps.</p></div></div>
+      <div class="step"><img src="media/step-mon_3.png" alt="" width="110" height="110"><div><h3><span class="num">3</span>Steal</h3><p>Smooch inside the zone to steal it. Higher in the zone means more devotion.</p></div></div>
+      <div class="step"><img src="media/step-capsule_machine.png" alt="" width="110" height="110"><div><h3><span class="num">4</span>Collect</h3><p>Spend devotion on capsules for spicier charms, then crash the wedding.</p></div></div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="row-head"><h2>What’s New</h2><span class="muted">Version 0.3</span></div>
+    <p class="muted small">Oct 7, 2026</p>
+    <p>Every scene, monster and wrangler is now painted neon art. Sharper rendering on high-density screens. Tap the robot for a self-playing demo.</p>
+  </section>
+
+  <section class="block">
+    <h2>Information</h2>
+    <dl class="info">
+      <div><dt>Developer</dt><dd>Ankith Harathi</dd></div>
+      <div><dt>Size</dt><dd>2.6 MB</dd></div>
+      <div><dt>Category</dt><dd>Card Battler · Dating Sim</dd></div>
+      <div><dt>Compatibility</dt><dd>Any modern browser. Best on a phone, held upright.</dd></div>
+      <div><dt>Languages</dt><dd>None. The game is wordless.</dd></div>
+      <div><dt>Age Rating</dt><dd>Suggested 9+ · Cartoon peril</dd></div>
+      <div><dt>Price</dt><dd>Free</dd></div>
+      <div><dt>Built with</dt><dd>Phaser 3 · AI-generated art</dd></div>
+    </dl>
+  </section>
+
+  <section class="block">
+    <h2>More by Ankith Harathi</h2>
+    <a class="other" href="../necromancer/">
+      <img src="../necromancer/media/icon-512.png" alt="" width="84" height="84">
+      <div><strong>Stitch Me Tender: nec<span class="r">R</span>omancer</strong><span>Build your soulmate. Some assembly required.</span></div>
+      <span class="view">VIEW</span>
+    </a>
+  </section>
+  <footer>A playable prototype. © 2026 Ankith Harathi.</footer>
+</main>
+
+<div class="sticky" id="sticky" aria-hidden="true">
+  <img src="media/icon-512.png" alt="" width="40" height="40"><span>kleptoRomancer</span><a class="play" href="play/">PLAY</a>
+</div>
+
+<div class="lightbox" id="lb" hidden>
+  <button class="lb-close" id="lbClose" aria-label="Close">✕</button>
+  <button class="lb-nav prev" id="lbPrev" aria-label="Previous">‹</button>
+  <img id="lbImg" alt="">
+  <button class="lb-nav next" id="lbNext" aria-label="Next">›</button>
+</div>
 <script>
-const W = 540, H = 960;
-const N = {
-  pink: 0xff3d8b, cyan: 0x3df2ff, lime: 0xb6ff3d, gold: 0xffd23f, ink: 0x160b1e, white: 0xffffff,
-  red: 0xff3b3b, ice: 0x9fe8ff, teal: 0x12303a, orange: 0xe0703a, plum: 0x3a1d4a, plum2: 0x2a1236,
-  sand: 0xd9a066, sand2: 0xb88050, skin: 0xb9e6a8, dim: 0x4a3a5a,
+const N = 7;
+const full = (i) => 'media/shot-' + String(i + 1).padStart(2, '0') + '-full.jpg';
+const lb = document.getElementById('lb'), lbImg = document.getElementById('lbImg'); let cur = 0;
+const open = (i) => { cur = (i + N) % N; lbImg.src = full(cur); lbImg.alt = 'Screenshot ' + (cur + 1); lb.hidden = false; document.body.style.overflow = 'hidden'; };
+const close = () => { lb.hidden = true; document.body.style.overflow = ''; };
+document.querySelectorAll('.shot').forEach((b) => b.addEventListener('click', () => open(+b.dataset.i)));
+document.getElementById('lbClose').onclick = close; document.getElementById('lbPrev').onclick = (e) => { e.stopPropagation(); open(cur - 1); }; document.getElementById('lbNext').onclick = (e) => { e.stopPropagation(); open(cur + 1); };
+lb.addEventListener('click', (e) => { if (e.target === lb) close(); });
+document.addEventListener('keydown', (e) => { if (lb.hidden) return; if (e.key === 'Escape') close(); if (e.key === 'ArrowLeft') open(cur - 1); if (e.key === 'ArrowRight') open(cur + 1); });
+const desc = document.getElementById('desc'), more = document.getElementById('more');
+more.onclick = () => { desc.classList.add('open'); more.remove(); };
+document.getElementById('share').onclick = async () => {
+  const data = { title: document.title, text: "Steal their monsters. Break their hearts.", url: location.href.split('#')[0] };
+  try { if (navigator.share) await navigator.share(data); else { await navigator.clipboard.writeText(data.url); const b = document.getElementById('share'); b.classList.add('copied'); setTimeout(() => b.classList.remove('copied'), 1400); } } catch (e) {}
 };
-const SYMS = ['moon', 'bone', 'flame', 'drop', 'star', 'eye'];
-const SYMCOL = { moon: 0xfff1a8, bone: 0xf3ead7, flame: 0xff8a3d, drop: 0xb6ff3d, star: 0xffd23f, eye: 0x3df2ff, wild: 0xff3d8b, ice: 0x9fe8ff };
-const RAR = [N.cyan, N.pink, N.gold];
-const MCOLS = [0xff8fb1, 0x8fe3a0, 0xb59cff, 0xffc46b, 0x7fd6ff, 0xff9a7a, 0xd8ff7a, 0xe7a8ff];
-
-const rnd = (n) => Math.floor(Math.random() * n);
-const pick = (a) => a[rnd(a.length)];
-const shuffle = (a) => Phaser.Utils.Array.Shuffle(a);
-
-// ---------------- run state ----------------
-const S = { round: 0, hats: 5, maxHats: 5, deck: [], entourage: [], tokens: 0, muted: false, auto: false };
-const mkCard = (sym, solid, ghost, rarity = 0) => ({ sym, solid, ghost, rarity });
-function startDeck() {
-  const r = () => pick(SYMS);
-  return [mkCard(r(), 1, 0), mkCard(r(), 1, 0), mkCard(r(), 1, 0), mkCard(r(), 2, 0), mkCard(r(), 2, 0),
-    mkCard(r(), 1, 1), mkCard(r(), 1, 1), mkCard(r(), 1, 2), mkCard('ice', 0, 0)];
-}
-function newLook(size = 1) {
-  const m = shuffle(SYMS.slice()).slice(0, 2);
-  return { color: pick(MCOLS), eyes: 1 + rnd(3), stalks: Math.random() < 0.4, horns: rnd(3), spots: Math.random() < 0.6, size, markers: m, wide: 0.9 + Math.random() * 0.3 };
-}
-function resetRun() { S.round = 0; S.hats = 5; S.deck = startDeck(); S.entourage = []; S.tokens = 0; }
-resetRun();
-
-const RIVALS = [
-  { kind: 'kid', count: 2, zoneMax: 7, zoneSize: 3, size: 0.85, intent: () => (Math.random() < 0.7 ? { k: 'fang', n: 1 } : { k: 'snow', n: 2 }) },
-  { kind: 'rodeo', count: 3, zoneMax: 8, zoneSize: 3, size: 0.8, intent: () => (Math.random() < 0.5 ? { k: 'fang', n: 1 + rnd(2) } : { k: 'snow', n: 2 }) },
-  { kind: 'bride', count: 1, zoneMax: 11, zoneSize: 2, size: 1.45, intent: (t) => (t % 2 === 0 ? { k: 'fang', n: 2 } : { k: 'snow', n: 2 }) },
-];
-
-// ---------------- audio ----------------
-let AC = null;
-function ac() { if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} } if (AC && AC.state === 'suspended') AC.resume(); return AC; }
-function tone(f, d, type = 'square', v = 0.08, slide = 0, delay = 0) {
-  if (S.muted) return; const a = ac(); if (!a) return;
-  const t = a.currentTime + delay, o = a.createOscillator(), g = a.createGain();
-  o.type = type; o.frequency.setValueAtTime(f, t);
-  if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, f + slide), t + d);
-  g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
-  o.connect(g); g.connect(a.destination); o.start(t); o.stop(t + d + 0.02);
-}
-function noise(d, v = 0.1, delay = 0, hp = 800) {
-  if (S.muted) return; const a = ac(); if (!a) return;
-  const t = a.currentTime + delay, b = a.createBuffer(1, Math.max(1, a.sampleRate * d), a.sampleRate), ch = b.getChannelData(0);
-  for (let i = 0; i < ch.length; i++) ch[i] = (Math.random() * 2 - 1) * (1 - i / ch.length);
-  const s = a.createBufferSource(), g = a.createGain(), f = a.createBiquadFilter();
-  f.type = 'highpass'; f.frequency.value = hp; s.buffer = b; g.gain.value = v;
-  s.connect(f); f.connect(g); g.connect(a.destination); s.start(t);
-}
-const SFX = {
-  laugh() { tone(160, 0.22, 'sawtooth', 0.09, 120); [0, 1, 2].forEach((i) => tone(260 - i * 30, 0.14, 'square', 0.08, -60, 0.3 + i * 0.18)); },
-  buzz() { tone(60, 0.25, 'sawtooth', 0.05); tone(120, 0.25, 'square', 0.02); },
-  flick() { noise(0.08, 0.08, 0, 2500); },
-  tick(i) { tone(500 + i * 70, 0.06, 'triangle', 0.1); },
-  ghost() { tone(900, 0.04, 'sine', 0.06); tone(1100, 0.04, 'sine', 0.05, 0, 0.06); },
-  fizzle() { noise(0.15, 0.06, 0, 3000); tone(300, 0.15, 'sine', 0.05, -200); },
-  beat(f) { tone(58, 0.11, 'sine', 0.3 * f, -18); tone(52, 0.11, 'sine', 0.24 * f, -18, 0.16); },
-  smooch() { tone(700, 0.07, 'sine', 0.18, 700); tone(1500, 0.09, 'sine', 0.12, -800, 0.08); noise(0.05, 0.06, 0.07, 3000); },
-  chomp() { noise(0.12, 0.3, 0, 200); tone(110, 0.25, 'square', 0.15, -60); noise(0.1, 0.25, 0.14, 300); },
-  sob() { [0, 1, 2].forEach((i) => tone(520 - i * 40, 0.25, 'sine', 0.07, -140, i * 0.28)); },
-  coin() { tone(1300, 0.08, 'square', 0.06); tone(1750, 0.12, 'square', 0.05, 0, 0.06); },
-  crank() { for (let i = 0; i < 6; i++) noise(0.03, 0.12, i * 0.07, 1500); },
-  pop(r) { tone(400 + r * 250, 0.12, 'triangle', 0.12, 500); [0, 1, 2].slice(0, r + 1).forEach((i) => tone(880 * Math.pow(1.25, i + r), 0.15, 'triangle', 0.08, 0, 0.12 + i * 0.08)); },
-  ice() { [0, 1, 2].forEach((i) => tone(1800 - i * 300, 0.1, 'sine', 0.06, 0, i * 0.05)); },
-  block() { tone(260, 0.07, 'square', 0.09); tone(330, 0.09, 'square', 0.07, 0, 0.05); },
-  hurt() { tone(200, 0.2, 'sawtooth', 0.1, -120); },
-  win() { [523, 659, 784, 1046].forEach((f, i) => tone(f, 0.25, 'triangle', 0.1, 0, i * 0.12)); },
-  lose() { [400, 330, 260, 180].forEach((f, i) => tone(f, 0.3, 'triangle', 0.1, -30, i * 0.18)); },
-};
-// calliope waltz loop
-let musicOn = false;
-function startMusic() {
-  if (musicOn) return; musicOn = true;
-  const chords = [[130.8, 261.6, 329.6], [98, 246.9, 293.7], [110, 220, 261.6], [87.3, 220, 261.6]];
-  const mel = [659, 784, 659, 587, 523, 587, 659, 523, 440, 523, 587, 494, 523, 659, 784, 880, 784, 659, 587, 523, 494, 523, 587, 523];
-  let beat = 0;
-  setInterval(() => {
-    if (S.muted) { beat++; return; }
-    const bar = Math.floor(beat / 3) % 4, b = beat % 3, ch = chords[bar];
-    if (b === 0) tone(ch[0], 0.3, 'triangle', 0.035); else { tone(ch[1], 0.12, 'square', 0.012); tone(ch[2], 0.12, 'square', 0.012); }
-    tone(mel[beat % mel.length], 0.22, 'triangle', 0.02);
-    beat++;
-  }, 380);
-}
-
-// ---------------- drawing ----------------
-function heart(g, x, y, s, color, alpha = 1) {
-  g.fillStyle(color, alpha); g.fillCircle(x - s * 0.5, y - s * 0.2, s * 0.52); g.fillCircle(x + s * 0.5, y - s * 0.2, s * 0.52);
-  g.fillTriangle(x - s * 1.0, y - s * 0.02, x + s * 1.0, y - s * 0.02, x, y + s * 1.05);
-}
-function star(g, x, y, s, color) { const pts = []; for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? s * 0.45 : s; pts.push({ x: x + Math.cos(a) * r, y: y + Math.sin(a) * r }); } g.fillStyle(color); g.fillPoints(pts, true); }
-function drawSym(g, sym, x, y, s, bg = N.plum2, alpha = 1) {
-  const col = SYMCOL[sym];
-  g.fillStyle(col, alpha);
-  if (sym === 'moon') { g.fillCircle(x, y, s); g.fillStyle(bg); g.fillCircle(x + s * 0.5, y - s * 0.28, s * 0.82); }
-  else if (sym === 'bone') { g.fillRect(x - s * 0.7, y - s * 0.22, s * 1.4, s * 0.44); [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(([a, b]) => g.fillCircle(x + a * s * 0.72, y + b * s * 0.24, s * 0.3)); }
-  else if (sym === 'flame') { g.fillCircle(x, y + s * 0.28, s * 0.6); g.fillTriangle(x - s * 0.58, y + s * 0.15, x + s * 0.58, y + s * 0.15, x + s * 0.12, y - s * 1.0); g.fillStyle(0xffe08a, alpha); g.fillCircle(x, y + s * 0.42, s * 0.3); }
-  else if (sym === 'drop') { g.fillCircle(x, y + s * 0.3, s * 0.62); g.fillTriangle(x - s * 0.58, y + s * 0.12, x + s * 0.58, y + s * 0.12, x, y - s * 0.95); g.fillStyle(N.white, 0.6 * alpha); g.fillCircle(x - s * 0.2, y + s * 0.2, s * 0.14); }
-  else if (sym === 'star') star(g, x, y, s, col);
-  else if (sym === 'eye') { g.fillStyle(N.white, alpha); g.fillEllipse(x, y, s * 2.1, s * 1.25); g.fillStyle(col, alpha); g.fillCircle(x, y, s * 0.48); g.fillStyle(N.ink, alpha); g.fillCircle(x, y, s * 0.22); }
-  else if (sym === 'wild') { heart(g, x, y, s * 0.9, N.pink, alpha); heart(g, x, y + s * 0.05, s * 0.62, N.gold, alpha); heart(g, x, y + s * 0.1, s * 0.34, N.cyan, alpha); }
-  else if (sym === 'ice') { g.lineStyle(Math.max(2, s * 0.22), col, alpha); for (let i = 0; i < 3; i++) { const a = i * Math.PI / 3; g.lineBetween(x - Math.cos(a) * s, y - Math.sin(a) * s, x + Math.cos(a) * s, y + Math.sin(a) * s); } g.fillCircle(x, y, s * 0.22); }
-}
-function flamePip(g, x, y, s, ghost) {
-  if (!ghost) { drawSym(g, 'flame', x, y, s); return; }
-  g.fillStyle(0xff8a3d, 0.22); g.fillCircle(x, y + s * 0.28, s * 0.6); g.fillTriangle(x - s * 0.58, y + s * 0.15, x + s * 0.58, y + s * 0.15, x + s * 0.12, y - s * 1.0);
-  g.lineStyle(2, 0xffb070, 0.95); g.strokeCircle(x, y + s * 0.28, s * 0.6); g.lineBetween(x - s * 0.5, y, x + s * 0.12, y - s * 1.0); g.lineBetween(x + s * 0.5, y, x + s * 0.12, y - s * 1.0);
-}
-function glowRect(g, x, y, w, h, r, color, lw = 3) {
-  g.lineStyle(lw * 5, color, 0.08); g.strokeRoundedRect(x, y, w, h, r);
-  g.lineStyle(lw * 2.5, color, 0.2); g.strokeRoundedRect(x, y, w, h, r);
-  g.lineStyle(lw, color, 1); g.strokeRoundedRect(x, y, w, h, r);
-}
-function glowCircle(g, x, y, r, color, lw = 3) {
-  g.lineStyle(lw * 5, color, 0.08); g.strokeCircle(x, y, r);
-  g.lineStyle(lw * 2.5, color, 0.2); g.strokeCircle(x, y, r);
-  g.lineStyle(lw, color, 1); g.strokeCircle(x, y, r);
-}
-function hatIcon(g, x, y, s, color = N.ink, band = N.pink) {
-  g.fillStyle(color); g.fillRect(x - s * 0.55, y - s * 1.1, s * 1.1, s * 1.1); g.fillEllipse(x, y, s * 1.9, s * 0.45);
-  g.fillStyle(band); g.fillRect(x - s * 0.55, y - s * 0.35, s * 1.1, s * 0.22);
-}
-function lipsIcon(g, x, y, s, color = N.pink) {
-  g.fillStyle(N.ink); g.fillEllipse(x, y, s * 2.3, s * 1.35);
-  g.fillStyle(color); g.fillEllipse(x - s * 0.45, y - s * 0.22, s * 1.1, s * 0.6); g.fillEllipse(x + s * 0.45, y - s * 0.22, s * 1.1, s * 0.6); g.fillEllipse(x, y + s * 0.25, s * 1.8, s * 0.65);
-  g.lineStyle(Math.max(2, s * 0.12), N.ink); g.lineBetween(x - s * 0.95, y + 0.02 * s, x + s * 0.95, y + 0.02 * s);
-}
-function teethIcon(g, x, y, s) {
-  g.fillStyle(N.ink); g.fillEllipse(x, y, s * 2.3, s * 1.5); g.fillStyle(0x8a1030); g.fillEllipse(x, y, s * 2.0, s * 1.2);
-  g.fillStyle(N.white); for (let i = -2; i <= 2; i++) { g.fillTriangle(x + i * s * 0.36 - s * 0.17, y - s * 0.55, x + i * s * 0.36 + s * 0.17, y - s * 0.55, x + i * s * 0.36, y - s * 0.12); g.fillTriangle(x + i * s * 0.36 - s * 0.17, y + s * 0.55, x + i * s * 0.36 + s * 0.17, y + s * 0.55, x + i * s * 0.36, y + s * 0.12); }
-}
-// procedural mutant: container origin at feet
-function makeMonster(scene, x, y, look, scale = 1) {
-  const c = scene.add.container(x, y), g = scene.add.graphics(); c.add(g);
-  c.look = look; c.mood = 'normal';
-  c.redraw = (mood) => { c.mood = mood; g.clear(); drawMonsterG(g, look, mood); };
-  c.redraw('normal'); c.setScale(scale * look.size);
-  c.topY = -(130) * scale * look.size;
-  return c;
-}
-function drawMonsterG(g, L, mood) {
-  const bw = 96 * L.wide, bh = 86, by = -50;
-  // feet
-  g.fillStyle(N.ink); g.fillEllipse(-24, -6, 40, 20); g.fillEllipse(24, -6, 40, 20);
-  g.fillStyle(L.color); g.fillEllipse(-24, -8, 32, 14); g.fillEllipse(24, -8, 32, 14);
-  // horns
-  if (L.horns === 1) { [-1, 1].forEach((sd) => { g.fillStyle(N.ink); g.fillTriangle(sd * 22, by - bh / 2 + 10, sd * 42, by - bh / 2 + 4, sd * 40, by - bh / 2 - 30); g.fillStyle(0xf3ead7); g.fillTriangle(sd * 25, by - bh / 2 + 8, sd * 38, by - bh / 2 + 4, sd * 38, by - bh / 2 - 22); }); }
-  if (L.horns === 2) { [-1, 1].forEach((sd) => { g.lineStyle(4, N.ink); g.lineBetween(sd * 14, by - bh / 2 + 6, sd * 26, by - bh / 2 - 26); g.fillStyle(N.lime); g.fillCircle(sd * 26, by - bh / 2 - 28, 7); }); }
-  // body
-  const squish = mood === 'chomp' ? 1.15 : 1;
-  g.fillStyle(N.ink); g.fillEllipse(0, by, bw + 10, (bh + 10) * squish);
-  g.fillStyle(L.color); g.fillEllipse(0, by, bw, bh * squish);
-  if (L.spots) { g.fillStyle(0x000000, 0.12); g.fillCircle(-bw * 0.3, by - 16, 9); g.fillCircle(bw * 0.32, by + 6, 7); g.fillCircle(bw * 0.18, by - 28, 5); }
-  // belly with genetic markers
-  g.fillStyle(0xffffff, 0.35); g.fillEllipse(0, by + 18, bw * 0.62, bh * 0.42);
-  g.fillStyle(N.plum2, 0.85); g.fillRoundedRect(-30, by + 6, 60, 26, 10);
-  drawSym(g, L.markers[0], -14, by + 19, 8, N.plum2); drawSym(g, L.markers[1], 14, by + 19, 8, N.plum2);
-  // eyes
-  const ey = by - bh * 0.22, n = L.eyes;
-  for (let i = 0; i < n; i++) {
-    const ex = (i - (n - 1) / 2) * 26, eyY = L.stalks ? ey - 30 - (i % 2) * 8 : ey;
-    if (L.stalks) { g.lineStyle(5, N.ink); g.lineBetween(ex * 0.6, ey, ex, eyY); }
-    if (mood === 'smitten') { g.fillStyle(N.ink); g.fillCircle(ex, eyY, 13); heart(g, ex, eyY, 9, N.pink); }
-    else {
-      g.fillStyle(N.ink); g.fillCircle(ex, eyY, 13); g.fillStyle(N.white); g.fillCircle(ex, eyY, 10);
-      const px = mood === 'nervous' ? (Math.random() * 4 - 2) : 1, py = mood === 'chomp' ? -2 : 2;
-      g.fillStyle(mood === 'chomp' ? N.red : N.ink); g.fillCircle(ex + px, eyY + py, mood === 'nervous' ? 3 : 5);
-    }
-  }
-  // mouth
-  const my = by + bh * 0.02 - 6;
-  if (mood === 'chomp') {
-    g.fillStyle(N.ink); g.fillEllipse(0, my + 4, bw * 0.8, 44); g.fillStyle(0x8a1030); g.fillEllipse(0, my + 4, bw * 0.7, 34);
-    g.fillStyle(N.white); for (let i = -3; i <= 3; i++) { g.fillTriangle(i * 9 - 5, my - 12, i * 9 + 5, my - 12, i * 9, my); g.fillTriangle(i * 9 - 5, my + 20, i * 9 + 5, my + 20, i * 9, my + 8); }
-  } else {
-    g.lineStyle(4, N.ink); g.beginPath(); g.arc(0, my - 8, 16, Math.PI * 0.18, Math.PI * 0.82); g.strokePath();
-    g.fillStyle(N.white); g.fillTriangle(-8, my + 5, -2, my + 5, -5, my + 12); g.fillTriangle(4, my + 5, 10, my + 5, 7, my + 12);
-  }
-  if (mood === 'smitten' || mood === 'nervous') { g.fillStyle(N.pink, mood === 'smitten' ? 0.85 : 0.4); g.fillCircle(-bw * 0.32, my - 4, 8); g.fillCircle(bw * 0.32, my - 4, 8); }
-  if (mood === 'nervous') { g.fillStyle(N.cyan, 0.9); g.fillCircle(bw * 0.45, by - 30, 5); g.fillTriangle(bw * 0.45 - 5, by - 30, bw * 0.45 + 5, by - 30, bw * 0.45, by - 42); }
-}
-function drawThief(scene, x, y, s = 1) {
-  const c = scene.add.container(x, y), g = scene.add.graphics(); c.add(g);
-  // cape
-  g.fillStyle(N.ink); g.fillTriangle(-70, 0, 70, 0, 0, -200); g.fillStyle(0x5a1a3a); g.fillTriangle(-62, -4, 62, -4, 0, -192);
-  g.lineStyle(3, N.pink, 0.9); g.lineBetween(-62, -4, 0, -192); g.lineBetween(62, -4, 0, -192);
-  // legs + body
-  g.fillStyle(N.ink); g.fillRect(-18, -60, 12, 60); g.fillRect(6, -60, 12, 60); g.fillEllipse(-14, -2, 26, 10); g.fillEllipse(14, -2, 26, 10);
-  g.fillStyle(N.ink); g.fillRoundedRect(-30, -150, 60, 96, 14); g.fillStyle(N.white); g.fillTriangle(-12, -148, 12, -148, 0, -100);
-  g.fillStyle(N.pink); g.fillTriangle(-10, -144, 0, -136, -10, -128); g.fillTriangle(10, -144, 0, -136, 10, -128);
-  // lockbox under arm
-  g.fillStyle(N.ink); heart(g, 34, -96, 18, N.ink); heart(g, 34, -96, 14, N.gold); g.fillStyle(N.ink); g.fillRect(30, -100, 8, 10);
-  // head
-  g.fillStyle(N.ink); g.fillEllipse(0, -180, 62, 70); g.fillStyle(N.skin); g.fillEllipse(0, -180, 54, 62);
-  // sly eyes
-  g.fillStyle(N.white); g.fillEllipse(-12, -188, 16, 9); g.fillEllipse(12, -188, 16, 9);
-  g.fillStyle(N.ink); g.fillCircle(-9, -188, 3.5); g.fillCircle(15, -188, 3.5); g.lineStyle(3, N.ink); g.lineBetween(-22, -196, -4, -192); g.lineBetween(22, -196, 4, -192);
-  // grin
-  g.lineStyle(3, N.ink); g.beginPath(); g.arc(0, -172, 12, Math.PI * 0.2, Math.PI * 0.8); g.strokePath();
-  // hat
-  hatIcon(g, 0, -208, 32);
-  // mustache (separate for twirl)
-  const mg = scene.add.graphics(); c.add(mg);
-  mg.fillStyle(N.ink); mg.fillEllipse(-12, -168, 26, 9); mg.fillEllipse(12, -168, 26, 9);
-  mg.lineStyle(5, N.ink); mg.beginPath(); mg.arc(-30, -174, 8, 0, Math.PI * 1.6); mg.strokePath(); mg.beginPath(); mg.arc(30, -174, 8, Math.PI * -0.6, Math.PI); mg.strokePath();
-  c.mustache = mg;
-  c.twirl = () => { scene.tweens.add({ targets: mg, scaleX: { from: 1, to: 1.25 }, yoyo: true, repeat: 3, duration: 90 }); scene.tweens.add({ targets: c, angle: { from: -4, to: 4 }, yoyo: true, repeat: 3, duration: 90, onComplete: () => (c.angle = 0) }); };
-  c.setScale(s);
-  return c;
-}
-function drawWrangler(scene, kind, x, y, s = 1) {
-  const c = scene.add.container(x, y), g = scene.add.graphics(); c.add(g);
-  if (kind === 'kid') {
-    g.fillStyle(N.ink); g.fillRoundedRect(-22, -70, 44, 60, 12); g.fillCircle(0, -86, 22); g.fillStyle(0xf2c9a0); g.fillCircle(0, -86, 18);
-    g.fillStyle(N.orange); g.fillRoundedRect(-18, -66, 36, 52, 10); g.fillStyle(N.ink); g.fillRect(-22, -104, 44, 8); g.fillRect(-4, -104, 30, 6);
-    g.fillStyle(N.ink); g.fillCircle(-7, -88, 3); g.fillCircle(7, -88, 3); g.fillRect(-16, -10, 10, 10); g.fillRect(6, -10, 10, 10);
-  } else if (kind === 'rodeo') {
-    g.fillStyle(N.ink); g.fillRoundedRect(-24, -76, 48, 66, 12); g.fillCircle(0, -92, 22); g.fillStyle(0xd9a87a); g.fillCircle(0, -92, 18);
-    g.fillStyle(0x7a3a2a); g.fillRoundedRect(-20, -72, 40, 58, 10); g.fillStyle(N.ink); g.fillEllipse(0, -106, 70, 12); g.fillRoundedRect(-18, -128, 36, 24, 8); g.fillStyle(N.gold); g.fillRect(-18, -110, 36, 4);
-    g.fillStyle(N.ink); g.fillCircle(-7, -94, 3); g.fillCircle(7, -94, 3); g.lineStyle(3, N.gold); g.strokeCircle(30, -50, 12);
-  } else {
-    g.fillStyle(N.ink); g.fillTriangle(-40, 0, 40, 0, 0, -110); g.fillStyle(0xf6f0ff); g.fillTriangle(-34, -4, 34, -4, 0, -104);
-    g.fillStyle(N.ink); g.fillCircle(0, -118, 22); g.fillStyle(0x9fd0a0); g.fillCircle(0, -118, 18);
-    g.fillStyle(0xf6f0ff, 0.6); g.fillTriangle(-26, -134, 26, -134, 40, -40); g.fillStyle(N.ink); g.fillCircle(-7, -120, 3); g.fillCircle(7, -120, 3);
-    g.fillStyle(N.pink); g.fillCircle(-12, -70, 7); g.fillCircle(-2, -76, 7); g.fillCircle(8, -70, 7);
-    g.lineStyle(3, 0x8fe3a0); g.lineBetween(-2, -70, -2, -40);
-  }
-  c.setScale(s);
-  return c;
-}
-function background(scene, mode = 'fair') {
-  const g = scene.add.graphics();
-  g.fillGradientStyle(N.teal, N.teal, N.orange, N.orange, 1); g.fillRect(0, 0, W, 600);
-  g.fillGradientStyle(0x0c1a24, 0x0c1a24, N.teal, N.teal, 1); g.fillRect(0, 0, W, 220);
-  g.fillStyle(N.lime, 0.12); g.fillCircle(110, 330, 90); g.fillStyle(0xd8ff9a); g.fillCircle(110, 330, 42);
-  for (let i = 0; i < 30; i++) { g.fillStyle(N.white, Math.random() * 0.6 + 0.2); g.fillCircle(Math.random() * W, Math.random() * 220, Math.random() * 1.6 + 0.4); }
-  // ferris wheel silhouette
-  const fx = 420, fy = 420, fr = 150;
-  g.lineStyle(6, 0x1a0f22); g.strokeCircle(fx, fy, fr); g.strokeCircle(fx, fy, fr * 0.35);
-  for (let i = 0; i < 12; i++) { const a = i * Math.PI / 6; g.lineBetween(fx, fy, fx + Math.cos(a) * fr, fy + Math.sin(a) * fr); }
-  g.lineBetween(fx, fy, fx - 70, 620); g.lineBetween(fx, fy, fx + 70, 620);
-  // tent
-  g.fillStyle(0x24112e); g.fillTriangle(-20, 600, 200, 600, 90, 430); g.fillStyle(0x3a1630); g.fillTriangle(30, 600, 90, 600, 90, 430);
-  // bulbs that blink
-  for (let i = 0; i < 12; i++) {
-    const a = i * Math.PI / 6, b = scene.add.circle(fx + Math.cos(a) * fr, fy + Math.sin(a) * fr, 5, i % 2 ? N.gold : N.pink);
-    scene.tweens.add({ targets: b, alpha: 0.25, yoyo: true, repeat: -1, duration: 400, delay: i * 70 });
-  }
-  // ground
-  g.fillStyle(N.sand2); g.fillRect(0, 590, W, H - 590);
-  g.fillStyle(N.sand); g.fillEllipse(W / 2, 610, W * 1.6, 90); g.fillRect(0, 610, W, H);
-  g.fillStyle(0x000000, 0.08); for (let i = 0; i < 14; i++) g.fillEllipse(Math.random() * W, 640 + Math.random() * 300, 40 + Math.random() * 40, 8);
-  // bottle caps
-  for (let i = 0; i < 8; i++) { const x = Math.random() * W, y = 650 + Math.random() * 300; g.fillStyle(N.ink); g.fillCircle(x, y, 7); g.fillStyle(pick([N.red, N.cyan, N.gold])); g.fillCircle(x, y, 5); }
-  return g;
-}
-function topBar(scene, showHats = true) {
-  autoButton(scene);
-  const g = scene.add.graphics().setDepth(50);
-  for (let i = 0; i < 3; i++) { const x = W / 2 - 46 + i * 46, y = 40; const col = i < S.round ? N.dim : i === S.round ? N.gold : 0x7a6a8a; g.fillStyle(N.ink); g.fillTriangle(x - 18, y + 14, x + 18, y + 14, x, y - 18); g.fillStyle(col); g.fillTriangle(x - 13, y + 11, x + 13, y + 11, x, y - 12); g.fillStyle(N.ink); g.fillRect(x - 2, y - 22, 4, 6); }
-  if (S.round < 3) { const r = scene.add.circle(W / 2 - 46 + S.round * 46, 40, 24).setStrokeStyle(3, N.gold).setDepth(50); scene.tweens.add({ targets: r, scale: 1.15, alpha: 0.5, yoyo: true, repeat: -1, duration: 500 }); }
-  const mg = scene.add.graphics().setDepth(50);
-  const drawM = () => { mg.clear(); mg.fillStyle(N.ink, 0.7); mg.fillCircle(W - 36, 40, 24); mg.fillStyle(N.white); mg.fillRect(W - 48, 33, 8, 14); mg.fillTriangle(W - 42, 40, W - 30, 28, W - 30, 52); if (S.muted) { mg.lineStyle(4, N.red); mg.lineBetween(W - 54, 24, W - 18, 56); } else { mg.lineStyle(3, N.white); mg.beginPath(); mg.arc(W - 26, 40, 8, -0.8, 0.8); mg.strokePath(); } };
-  drawM(); scene.add.zone(W - 36, 40, 64, 64).setInteractive().setDepth(51).on('pointerdown', () => { S.muted = !S.muted; drawM(); });
-  return g;
-}
-function ghostHand(scene, x, y) {
-  const g = scene.add.graphics();
-  g.fillStyle(N.white, 0.9); g.fillRoundedRect(-10, -6, 20, 46, 10); g.fillRoundedRect(-24, 22, 48, 40, 14); g.fillCircle(-18, 26, 9);
-  g.lineStyle(3, N.ink, 0.8); g.strokeRoundedRect(-10, -6, 20, 46, 10); g.strokeRoundedRect(-24, 22, 48, 40, 14);
-  const c = scene.add.container(x, y, [g]).setDepth(200);
-  let tw = null;
-  c.move = (nx, ny) => { if (tw) tw.stop(); c.setPosition(nx, ny); c.setScale(1); c.setVisible(true); tw = scene.tweens.add({ targets: c, y: ny + 16, scale: 0.9, yoyo: true, repeat: -1, duration: 420, ease: 'Sine.InOut' }); };
-  c.hide = () => { if (tw) tw.stop(); c.setVisible(false); };
-  c.move(x, y);
-  return c;
-}
-function burst(scene, x, y, key, n = 12, tint, opts = {}) {
-  const p = scene.add.particles(x, y, key, Object.assign({ speed: { min: 120, max: 360 }, angle: { min: 0, max: 360 }, scale: { start: 1, end: 0 }, lifespan: 800, gravityY: 300, emitting: false, tint }, opts));
-  p.setDepth(150); p.explode(n); scene.time.delayedCall(1500, () => p.destroy());
-}
-function iconButton(scene, x, y, r, color, drawFn, onTap) {
-  const c = scene.add.container(x, y), g = scene.add.graphics();
-  g.fillStyle(N.ink); g.fillCircle(0, 5, r + 5); g.fillStyle(color); g.fillCircle(0, 0, r); g.fillStyle(N.white, 0.25); g.fillEllipse(-r * 0.3, -r * 0.42, r * 0.8, r * 0.38);
-  glowCircle(g, 0, 0, r + 2, color, 2);
-  const ig = scene.add.graphics(); drawFn(ig); c.add([g, ig]);
-  c.setSize(r * 2.2, r * 2.2).setInteractive({ useHandCursor: true });
-  c.on('pointerdown', () => { scene.tweens.add({ targets: c, scale: 0.85, yoyo: true, duration: 80 }); onTap(); });
-  return c;
-}
-function cardView(scene, card, x, y, scale = 1) {
-  const c = scene.add.container(x, y), g = scene.add.graphics();
-  g.fillStyle(N.ink); g.fillRoundedRect(-56, -76, 112, 152, 16);
-  g.fillStyle(RAR[card.rarity]); g.fillRoundedRect(-51, -71, 102, 142, 13);
-  g.fillStyle(N.plum2); g.fillRoundedRect(-45, -65, 90, 130, 10);
-  glowRect(g, -45, -65, 90, 130, 10, RAR[card.rarity], 1.5);
-  c.add(g);
-  const sg = scene.add.graphics(); c.add(sg);
-  if (card.sym === 'ice') {
-    drawSym(sg, 'ice', 0, -18, 26);
-    sg.fillStyle(N.ice); [0, 1].forEach((k) => sg.fillTriangle(-30 + k * 30 + 6, 32, 6 + k * 30 + 6, 32, -12 + k * 30 + 6, 50));
-  } else {
-    sg.fillStyle(SYMCOL[card.sym], 0.12); sg.fillCircle(0, -20, 34);
-    drawSym(sg, card.sym, 0, -20, 24);
-    const tot = card.solid + card.ghost;
-    for (let i = 0; i < tot; i++) flamePip(sg, (i - (tot - 1) / 2) * 29, 42, 13, i >= card.solid);
-  }
-  if (card.rarity === 2) { const sp = scene.add.circle(36, -56, 5, N.white); c.add(sp); scene.tweens.add({ targets: sp, scale: 0.2, yoyo: true, repeat: -1, duration: 300 }); }
-  c.setSize(112, 152); c.setScale(scale);
-  return c;
-}
-
-
-// ---------------- autoplay (robot toggle, top-right next to mute) ----------------
-function autoButton(scene) {
-  const g = scene.add.graphics().setDepth(300), x = W - 96, y = 40;
-  const draw = () => {
-    g.clear(); g.fillStyle(N.ink, 0.7); g.fillCircle(x, y, 24);
-    if (S.auto) glowCircle(g, x, y, 26, N.lime, 2);
-    const col = S.auto ? N.lime : N.white;
-    g.lineStyle(3, col); g.lineBetween(x, y - 12, x, y - 18); g.fillStyle(col); g.fillCircle(x, y - 19, 3); g.fillRoundedRect(x - 13, y - 11, 26, 22, 6);
-    g.fillStyle(N.ink); g.fillCircle(x - 6, y - 2, 3.5); g.fillCircle(x + 6, y - 2, 3.5); g.fillRect(x - 6, y + 5, 12, 2);
-  };
-  draw();
-  scene.add.zone(x, y, 64, 64).setInteractive().setDepth(301).on('pointerdown', () => { ac(); startMusic(); S.auto = !S.auto; draw(); });
-}
-let autoUntil = 0;
-function bestPlay(s) {
-  // pick the card/target with the most heat that cannot bust; fall back to ice on a monster near the skull
-  let best = null;
-  s.hand.forEach((c, i) => s.targets().forEach((m) => {
-    if (c.sym === 'ice') { if (m.heat > m.zoneMax - 1 && !(m.heat >= m.zoneMin)) best = best || { i, m, score: 0.5 }; return; }
-    const match = c.sym === 'wild' || m.look.markers.includes(c.sym), sol = c.solid + (match ? 1 : 0);
-    const lo = m.heat + sol, hi = lo + c.ghost;
-    if (hi <= m.zoneMax) { const score = 10 + hi + (lo >= m.zoneMin ? 5 : 0); if (!best || score > best.score) best = { i, m, score }; }
-    else if (lo <= m.zoneMax && m.heat < m.zoneMin) { const score = 3 + lo; if (!best || score > best.score) best = { i, m, score }; }
-  }));
-  return best;
-}
-function autoStep() {
-  if (!S.auto || !window.game) return;
-  const now = performance.now(); if (now < autoUntil) return;
-  const s = game.scene.getScenes(true)[0]; if (!s) return;
-  const hold = (ms) => { autoUntil = now + ms; };
-  const P = { x: 0, y: 0 }, k = s.scene.key;
-  if (k === 'Title') { s.input.emit('pointerdown', P); return hold(1200); }
-  if (k === 'Heist') {
-    if (s.over || s.busy || !s.mons) return hold(300);
-    const smit = s.targets().filter((m) => m.lips);
-    const play = s.energy > 0 ? bestPlay(s) : null;
-    // smooch when maxed, out of moves, or a ghost would be needed to climb
-    const ready = smit.find((m) => m.heat >= m.zoneMax || !play || play.m !== m || Math.random() < 0.25);
-    if (ready) { ready.lips.emit('pointerdown', P); return hold(1500); }
-    if (play) {
-      s.handViews[play.i].emit('pointerdown', P);
-      if (s.targets().length > 1) setTimeout(() => { if (s.sel === play.i) play.m.zone.emit('pointerdown', P); }, 350);
-      return hold(1900);
-    }
-    s.endBtn.emit('pointerdown', P); return hold(2600);
-  }
-  if (k === 'Booth') {
-    if (s.busy || s.leaving) return hold(300);
-    if (S.tokens >= 2) { s.crank.emit('pointerdown', P); return hold(1200); }
-    s.next.emit('pointerdown', P); return hold(1200);
-  }
-  if (k === 'Results') { if (s.replay && s.replay.scale > 0.9) { s.replay.emit('pointerdown', P); return hold(1500); } return hold(500); }
-  hold(300);
-}
-setInterval(autoStep, 120);
-
-// ---------------- scenes ----------------
-class Boot extends Phaser.Scene {
-  constructor() { super('Boot'); }
-  create() {
-    const mk = (key, w, h, fn) => { const g = this.add.graphics(); fn(g); g.generateTexture(key, w, h); g.destroy(); };
-    mk('pHeart', 32, 32, (g) => heart(g, 16, 13, 11, N.pink));
-    mk('pSpark', 16, 16, (g) => { g.fillStyle(N.white); g.fillCircle(8, 8, 6); });
-    mk('pTear', 14, 20, (g) => { g.fillStyle(N.cyan); g.fillCircle(7, 13, 6); g.fillTriangle(1, 12, 13, 12, 7, 0); });
-    mk('pFlame', 24, 30, (g) => drawSym(g, 'flame', 12, 16, 10));
-    mk('pIce', 28, 28, (g) => drawSym(g, 'ice', 14, 14, 11));
-    mk('pCoin', 28, 28, (g) => { heart(g, 14, 12, 11, N.ink); heart(g, 14, 12, 8, N.gold); });
-    mk('pHat', 40, 40, (g) => hatIcon(g, 20, 32, 16));
-    this.scene.start('Title');
-  }
-}
-
-class Title extends Phaser.Scene {
-  constructor() { super('Title'); }
-  create() {
-    background(this); autoButton(this);
-    const thief = drawThief(this, W / 2 + 80, 760, 1.05);
-    this.time.addEvent({ delay: 1800, loop: true, callback: () => thief.twirl() });
-    const look = newLook(1); const m = makeMonster(this, 150, 780, look, 1); m.redraw('smitten');
-    this.tweens.add({ targets: m, scaleY: m.scaleY * 0.93, yoyo: true, repeat: -1, duration: 500 });
-    // neon sign logo: lips | heart | teeth
-    const lg = this.add.graphics();
-    lg.fillStyle(N.ink, 0.85); lg.fillRoundedRect(-230, -90, 460, 180, 30); glowRect(lg, -230, -90, 460, 180, 30, N.cyan, 4);
-    lipsIcon(lg, -130, 0, 46); teethIcon(lg, 130, 0, 46); heart(lg, 0, -8, 46, N.pink);
-    glowCircle(lg, 0, 0, 62, N.pink, 3);
-    const logo = this.add.container(W / 2, 230, [lg]).setAlpha(0);
-    // flicker on
-    this.tweens.add({ targets: logo, alpha: { from: 0, to: 1 }, duration: 70, yoyo: true, repeat: 3, onComplete: () => { logo.setAlpha(1); this.tweens.add({ targets: logo, scale: 1.05, yoyo: true, repeat: -1, duration: 500, ease: 'Sine.InOut' }); } });
-    this.time.addEvent({ delay: 3000, loop: true, callback: () => { this.tweens.add({ targets: logo, alpha: 0.4, yoyo: true, duration: 50, repeat: 1 }); SFX.buzz(); } });
-    const hand = ghostHand(this, W / 2, 470);
-    this.input.once('pointerdown', () => {
-      ac(); startMusic(); SFX.laugh(); thief.twirl(); hand.hide(); this.cameras.main.flash(200, 255, 61, 139);
-      resetRun();
-      this.time.delayedCall(700, () => this.scene.start('Heist'));
-    });
-  }
-}
-
-class Heist extends Phaser.Scene {
-  constructor() { super('Heist'); }
-  create() {
-    // reset every instance field (scenes are reused between rounds)
-    this.busy = false; this.over = false; this.sel = -1; this.turn = 0; this.handViews = []; this.hand = [];
-    this.energy = 3; this.beatAcc = 0; this.hinted = { card: false, mon: false, lips: false };
-    this.R = RIVALS[S.round]; S.hats = S.maxHats;
-    background(this); topBar(this);
-    // stage
-    const sg = this.add.graphics();
-    sg.fillStyle(N.ink); sg.fillRoundedRect(10, 400, W - 20, 40, 12); sg.fillStyle(0x5a2a3a); sg.fillRoundedRect(16, 402, W - 32, 28, 10);
-    glowRect(sg, 16, 402, W - 32, 28, 10, N.pink, 2);
-    for (let i = 0; i < 16; i++) { const b = this.add.circle(30 + i * 32, 416, 4, i % 2 ? N.gold : N.cyan); this.tweens.add({ targets: b, alpha: 0.3, yoyo: true, repeat: -1, duration: 300, delay: (i % 4) * 120 }); }
-    this.wrangler = drawWrangler(this, this.R.kind, 44, 300, this.R.kind === 'bride' ? 1.0 : 0.85);
-    // bench for entourage
-    sg.fillStyle(N.ink); sg.fillRoundedRect(14, 640, 360, 18, 6); sg.fillStyle(0x7a4a2a); sg.fillRoundedRect(18, 642, 352, 10, 4); sg.fillStyle(N.ink); sg.fillRect(30, 656, 10, 20); sg.fillRect(350, 656, 10, 20);
-    this.thief = drawThief(this, 470, 620, 0.68);
-    // monsters
-    const n = this.R.count, xs = n === 1 ? [300] : n === 2 ? [200, 380] : [150, 290, 430];
-    this.mons = xs.map((x, i) => this.spawnMon(x, i));
-    // entourage
-    this.entViews = S.entourage.map((e, i) => this.spawnEnt(e, i));
-    // HUD
-    this.hud = this.add.graphics().setDepth(60);
-    this.endBtn = iconButton(this, 484, 724, 36, N.gold, (g) => { g.fillStyle(N.ink); g.fillTriangle(-12, -18, -12, 18, 16, 0); g.fillRect(16, -18, 6, 36); }, () => this.endTurn()).setDepth(60);
-    this.drawHUD();
-    this.ghost = ghostHand(this, 120, 860); this.ghost.hide();
-    this.time.delayedCall(350, () => { this.mons.forEach((m) => this.setIntent(m)); this.startTurn(); });
-  }
-  spawnMon(x, i) {
-    const look = newLook(this.R.size);
-    const mc = makeMonster(this, x, 404, look, 1);
-    this.tweens.add({ targets: mc, scaleY: mc.scaleY * 0.95, yoyo: true, repeat: -1, duration: 500 + i * 60, ease: 'Sine.InOut' });
-    const m = { i, x, view: mc, look, heat: 0, zoneMax: this.R.zoneMax, zoneMin: this.R.zoneMax - this.R.zoneSize + 1, stolen: false, intent: null };
-    m.meter = this.add.graphics().setDepth(20);
-    m.mx = x + (this.R.kind === 'bride' ? 110 : 56); m.segH = this.R.kind === 'bride' ? 16 : 16; m.mBottom = 396;
-    m.zone = this.add.zone(x, 340, 130 * (this.R.kind === 'bride' ? 1.5 : 1), 150).setInteractive({ useHandCursor: true });
-    m.zone.on('pointerdown', () => this.tapMon(m));
-    m.intentC = null; m.lips = null;
-    this.drawMeter(m);
-    return m;
-  }
-  spawnEnt(e, i) {
-    const x = 50 + i * 66, mc = makeMonster(this, x, 642, e.look, 0.4 / e.look.size);
-    mc.redraw('smitten'); this.tweens.add({ targets: mc, y: 636, yoyo: true, repeat: -1, duration: 400 + i * 50 });
-    return { e, view: mc, x, blocks: e.devotion };
-  }
-  drawHUD() {
-    const g = this.hud; g.clear();
-    g.fillStyle(N.ink, 0.8); g.fillRoundedRect(8, 20, S.maxHats * 34 + 12, 44, 20); glowRect(g, 8, 20, S.maxHats * 34 + 12, 44, 20, N.pink, 1.5);
-    for (let i = 0; i < S.maxHats; i++) hatIcon(g, 31 + i * 34, 54, 13, i < S.hats ? 0xf3ead7 : 0x3a3040, i < S.hats ? N.pink : 0x2a2030);
-    for (let i = 0; i < 3; i++) lipsIcon(g, 40 + i * 52, 724, 17, i < this.energy ? N.pink : N.dim);
-    // entourage devotion / blocks
-    (this.entViews || []).forEach((ev) => { for (let k = 0; k < ev.e.devotion; k++) heart(g, ev.x - (ev.e.devotion - 1) * 8 + k * 16, 584, 6, k < ev.blocks ? N.pink : N.dim); });
-    // deck pile
-    g.fillStyle(N.ink); g.fillRoundedRect(494, 610, 36, 48, 6); g.fillStyle(N.plum); g.fillRoundedRect(497, 613, 30, 42, 5);
-    const left = Math.min(6, S.drawPile ? S.drawPile.length : 0); for (let k = 0; k < left; k++) { g.fillStyle(N.cyan); g.fillRect(500, 652 - k * 6, 24, 3); }
-  }
-  drawMeter(m, preview) {
-    const g = m.meter; g.clear(); if (m.stolen) return;
-    const segs = m.zoneMax + 1, x = m.mx, b = m.mBottom, h = m.segH, top = b - segs * h;
-    g.fillStyle(N.ink); g.fillRoundedRect(x - 14, top - 8, 28, segs * h + 16, 12);
-    glowRect(g, x - 14, top - 8, 28, segs * h + 16, 12, m.heat >= m.zoneMin ? N.pink : N.cyan, 2);
-    for (let s = 0; s < segs - 1; s++) {
-      const y = b - (s + 1) * h, inZone = s + 1 >= m.zoneMin;
-      g.fillStyle(inZone ? 0x5a1a3a : 0x23182e); g.fillRect(x - 9, y + 2, 18, h - 3);
-      if (s < m.heat) { const t = s / (segs - 1); g.fillStyle(inZone ? N.pink : Phaser.Display.Color.GetColor(61 + t * 180, 242 - t * 150, 255 - t * 100)); g.fillRect(x - 9, y + 2, 18, h - 3); }
-    }
-    // zone hearts on the side
-    for (let s = m.zoneMin; s <= m.zoneMax; s++) heart(g, x - 22, b - s * h + h / 2 - 2, 4, N.pink, m.heat === s ? 1 : 0.6);
-    // skull cap
-    const sy = top + h / 2 - 2; g.fillStyle(N.ink); g.fillCircle(x, sy, 10); g.fillStyle(m.heat > m.zoneMax ? N.red : 0xf3ead7); g.fillCircle(x, sy - 1, 8); g.fillRect(x - 5, sy + 3, 10, 5); g.fillStyle(N.ink); g.fillCircle(x - 3, sy - 1, 2.2); g.fillCircle(x + 3, sy - 1, 2.2);
-    if (preview && !m.stolen) {
-      if (preview.sym === 'ice') { const to = Math.max(0, m.heat - 2); for (let s = to; s < m.heat; s++) { g.fillStyle(N.ice, 0.6); g.fillRect(x - 9, b - (s + 1) * h + 2, 18, h - 3); } }
-      else {
-        const match = preview.sym === 'wild' || m.look.markers.includes(preview.sym);
-        const sol = preview.solid + (match ? 1 : 0);
-        for (let s = m.heat; s < m.heat + sol + preview.ghost; s++) { if (s >= segs) break; const y = b - (s + 1) * h; g.fillStyle(N.white, s < m.heat + sol ? 0.55 : 0.2); g.fillRect(x - 9, y + 2, 18, h - 3); if (s >= m.heat + sol) { g.lineStyle(1.5, N.white, 0.7); g.strokeRect(x - 9, y + 2, 18, h - 3); } }
-        if (match) { g.lineStyle(3, N.gold, 1); g.strokeCircle(m.x, 404 - 48 * m.look.size + 19 * m.look.size, 30 * m.look.size); }
-      }
-    }
-  }
-  setIntent(m) {
-    if (m.stolen) return;
-    m.intent = this.R.intent(this.turn + m.i);
-    if (m.intentC) m.intentC.destroy();
-    const g = this.add.graphics(), w = 30 + m.intent.n * 20;
-    g.fillStyle(N.ink); g.fillRoundedRect(-w / 2, -20, w, 40, 14); g.fillStyle(N.white); g.fillRoundedRect(-w / 2 + 4, -16, w - 8, 32, 11);
-    for (let k = 0; k < m.intent.n; k++) {
-      const ix = (k - (m.intent.n - 1) / 2) * 22;
-      if (m.intent.k === 'fang') { g.fillStyle(N.ink); g.fillTriangle(ix - 9, -10, ix + 9, -10, ix, 13); g.fillStyle(N.red); g.fillTriangle(ix - 6, -8, ix + 6, -8, ix, 9); }
-      else drawSym(g, 'ice', ix, 0, 9);
-    }
-    const top = m.mBottom - (m.zoneMax + 1) * m.segH - 32;
-    m.intentC = this.add.container(m.mx, top, [g]).setDepth(25);
-    this.tweens.add({ targets: m.intentC, y: top - 6, yoyo: true, repeat: -1, duration: 420 });
-  }
-  startTurn() {
-    if (this.over) return;
-    this.energy = 3; this.sel = -1; this.turn++;
-    if (!S.drawPile || this.turn === 1) { S.drawPile = shuffle(S.deck.slice()); S.discard = []; }
-    for (let i = 0; i < 4; i++) {
-      if (!S.drawPile.length) { S.drawPile = shuffle(S.discard); S.discard = []; }
-      if (S.drawPile.length) this.hand.push(S.drawPile.pop());
-    }
-    this.layoutHand(true); this.drawHUD();
-    if (S.round === 0 && this.turn === 1) this.ghost.move(this.handViews[0] ? this.handViews[0].x + 20 : 100, 830);
-  }
-  layoutHand(fresh) {
-    this.handViews.forEach((v) => v.destroy());
-    this.handViews = this.hand.map((card, i) => {
-      const x = 76 + i * 129, y = 868;
-      const v = cardView(this, card, x, fresh ? y + 200 : y, 1).setDepth(70);
-      v.setInteractive({ useHandCursor: true }); v.on('pointerdown', () => this.tapCard(i));
-      if (fresh) this.tweens.add({ targets: v, y, duration: 280, delay: i * 70, ease: 'Back.Out' });
-      if (i === this.sel) { v.y = y - 34; v.setScale(1.06); }
-      return v;
-    });
-    this.mons.forEach((m) => this.drawMeter(m, this.sel >= 0 ? this.hand[this.sel] : null));
-  }
-  targets() { return this.mons.filter((m) => !m.stolen); }
-  tapCard(i) {
-    if (this.busy || this.over) return;
-    if (this.energy <= 0) { this.tweens.add({ targets: this.endBtn, scale: 1.25, yoyo: true, repeat: 1, duration: 110 }); return; }
-    SFX.flick();
-    if (this.sel === i) { this.sel = -1; this.layoutHand(false); return; }
-    this.sel = i; this.layoutHand(false);
-    const t = this.targets();
-    if (t.length === 1) { this.play(t[0]); return; }
-    if (!this.hinted.mon && S.round === 0) { this.ghost.move(t[0].x + 10, 330); } else this.ghost.hide();
-  }
-  tapMon(m) {
-    if (this.busy || this.over || m.stolen || this.sel < 0) return;
-    this.play(m);
-  }
-  wait(ms) { return new Promise((r) => this.time.delayedCall(ms, r)); }
-  async play(m) {
-    const card = this.hand[this.sel]; if (!card) return;
-    this.busy = true; this.hinted.card = this.hinted.mon = true; this.ghost.hide();
-    this.energy--; this.hand.splice(this.sel, 1); S.discard.push(card);
-    const view = this.handViews[this.sel]; this.handViews.splice(this.sel, 1); this.sel = -1;
-    this.drawHUD();
-    await new Promise((r) => this.tweens.add({ targets: view, x: m.x, y: 330, scale: 0.35, angle: 25, duration: 260, ease: 'Cubic.In', onComplete: r }));
-    view.destroy(); this.layoutHand(false);
-    const bodyY = 404 - 60 * m.look.size;
-    if (card.sym === 'ice') {
-      SFX.ice(); burst(this, m.x, bodyY, 'pIce', 12);
-      m.heat = Math.max(0, m.heat - 2);
-    } else {
-      const match = card.sym === 'wild' || m.look.markers.includes(card.sym);
-      if (match) { burst(this, m.x, bodyY + 20, 'pSpark', 10, N.gold); this.tweens.add({ targets: m.view, scaleX: m.view.scaleX * 1.12, yoyo: true, duration: 120 }); }
-      const solid = card.solid + (match ? 1 : 0);
-      for (let k = 0; k < solid; k++) { m.heat++; SFX.tick(m.heat); this.drawMeter(m); burst(this, m.mx, m.mBottom - m.heat * m.segH, 'pFlame', 3); await this.wait(150); if (m.heat > m.zoneMax) break; }
-      for (let k = 0; k < card.ghost && m.heat <= m.zoneMax; k++) {
-        // flickering ghost flame: the gamble
-        const fg = this.add.graphics().setDepth(90); flamePip(fg, 0, 0, 16, true);
-        const fc = this.add.container(m.mx, m.mBottom - (m.heat + 1) * m.segH, [fg]).setDepth(90);
-        const fl = this.tweens.add({ targets: fc, alpha: 0.2, yoyo: true, repeat: -1, duration: 70 });
-        for (let q = 0; q < 4; q++) { SFX.ghost(); await this.wait(110); }
-        fl.stop(); fc.destroy();
-        if (Math.random() < 0.5) { m.heat++; SFX.tick(m.heat + 2); burst(this, m.mx, m.mBottom - m.heat * m.segH, 'pFlame', 8); this.cameras.main.shake(80, 0.004); }
-        else { SFX.fizzle(); burst(this, m.mx, m.mBottom - (m.heat + 1) * m.segH, 'pSpark', 6, 0x8888aa, { gravityY: -100 }); }
-        this.drawMeter(m); await this.wait(160);
-      }
-    }
-    this.drawMeter(m);
-    if (m.heat > m.zoneMax) await this.chomp(m);
-    else this.updateMood(m);
-    this.busy = false;
-    if (this.over) return;
-    this.layoutHand(false); this.drawHUD();
-    if (this.energy <= 0) this.tweens.add({ targets: this.endBtn, scale: 1.2, yoyo: true, repeat: 3, duration: 140 });
-  }
-  updateMood(m) {
-    if (m.stolen) return;
-    if (m.heat >= m.zoneMin) {
-      m.view.redraw('smitten');
-      if (!m.lips) {
-        const ly = Math.max(150, 404 - 150 * m.look.size);
-        m.lips = iconButton(this, m.x, ly, 30, N.pink, (g) => lipsIcon(g, 0, 0, 17, N.red), () => this.smooch(m)).setDepth(80);
-        m.lips.setScale(0); this.tweens.add({ targets: m.lips, scale: 1, duration: 300, ease: 'Back.Out' });
-        this.tweens.add({ targets: m.lips, angle: { from: -8, to: 8 }, yoyo: true, repeat: -1, duration: 220, delay: 300 });
-        if (!this.hinted.lips && S.round === 0) { this.hinted.lips = true; this.ghost.move(m.x + 14, ly + 10); }
-      }
-    } else {
-      m.view.redraw(m.heat >= m.zoneMin - 2 ? 'nervous' : 'normal');
-      if (m.lips) { m.lips.destroy(); m.lips = null; }
-    }
-  }
-  async chomp(m) {
-    m.view.redraw('chomp'); SFX.chomp();
-    if (m.lips) { m.lips.destroy(); m.lips = null; }
-    const oy = m.view.y, os = m.view.scaleX;
-    await new Promise((r) => this.tweens.add({ targets: m.view, y: 560, scaleX: os * 1.5, scaleY: os * 1.5, duration: 160, ease: 'Cubic.In', onComplete: r }));
-    this.cameras.main.shake(350, 0.025); this.cameras.main.flash(120, 255, 59, 59);
-    burst(this, 470, 450, 'pHat', 2); burst(this, 300, 560, 'pSpark', 16, N.red);
-    S.hats = Math.max(0, S.hats - 2); this.drawHUD();
-    this.tweens.add({ targets: this.thief, angle: -18, duration: 120, yoyo: true });
-    await new Promise((r) => this.tweens.add({ targets: m.view, y: oy, scaleX: os, scaleY: os, duration: 300, ease: 'Back.Out', onComplete: r }));
-    m.heat = 0; this.drawMeter(m); m.view.redraw('normal');
-    if (S.hats <= 0) this.lose();
-  }
-  smooch(m) {
-    if (this.busy || this.over || m.stolen || m.heat < m.zoneMin) return;
-    this.ghost.hide();
-    const dev = Math.min(3, m.heat - m.zoneMin + 1 + (this.R.kind === 'bride' ? 1 : 0));
-    m.stolen = true; SFX.smooch(); S.tokens += dev;
-    if (m.lips) { m.lips.destroy(); m.lips = null; }
-    if (m.intentC) { m.intentC.destroy(); m.intentC = null; }
-    m.zone.disableInteractive(); this.drawMeter(m);
-    // hit-stop + kiss burst
-    this.tweens.pauseAll(); this.time.delayedCall(140, () => this.tweens.resumeAll());
-    this.cameras.main.zoomTo(1.06, 120, 'Linear', true); this.time.delayedCall(260, () => this.cameras.main.zoomTo(1, 200));
-    burst(this, m.x, 330, 'pHeart', 24); for (let k = 0; k < dev; k++) this.time.delayedCall(200 + k * 120, () => { SFX.coin(); burst(this, m.x, 330, 'pCoin', 3, undefined, { gravityY: 500 }); });
-    this.thief.twirl(); this.time.delayedCall(250, () => SFX.laugh());
-    // wrangler sobs
-    this.time.delayedCall(400, () => { SFX.sob(); burst(this, this.wrangler.x, this.wrangler.y - 80, 'pTear', 16, undefined, { angle: { min: 200, max: 340 }, gravityY: 600, speed: { min: 100, max: 250 } }); this.tweens.add({ targets: this.wrangler, angle: { from: -6, to: 6 }, yoyo: true, repeat: 5, duration: 70, onComplete: () => (this.wrangler.angle = 0) }); });
-    const e = { look: m.look, devotion: dev }; S.entourage.push(e);
-    const idx = S.entourage.length - 1, tx = 50 + idx * 66;
-    this.tweens.killTweensOf(m.view);
-    this.tweens.add({ targets: m.view, x: tx, y: 642, scaleX: 0.4, scaleY: 0.4, duration: 700, ease: 'Cubic.InOut', onComplete: () => {
-      m.view.destroy(); const ev = this.spawnEnt(e, idx); this.entViews.push(ev); this.drawHUD(); burst(this, tx, 600, 'pHeart', 8);
-    } });
-    if (this.targets().length === 0) this.win();
-  }
-  async endTurn() {
-    if (this.busy || this.over) return;
-    this.busy = true; this.ghost.hide(); this.sel = -1;
-    S.discard.push(...this.hand); this.hand = [];
-    this.handViews.forEach((v) => this.tweens.add({ targets: v, y: 1150, duration: 200, onComplete: () => v.destroy() })); this.handViews = [];
-    await this.wait(300);
-    for (const m of this.targets()) {
-      if (this.over) break;
-      const it = m.intent; if (!it) continue;
-      if (it.k === 'fang') {
-        const oy = m.view.y;
-        await new Promise((r) => this.tweens.add({ targets: m.view, y: oy + 90, duration: 150, ease: 'Cubic.In', yoyo: true, onYoyo: r }));
-        let dmg = it.n;
-        for (const ev of this.entViews) { while (dmg > 0 && ev.blocks > 0) { ev.blocks--; dmg--; SFX.block(); this.tweens.add({ targets: ev.view, y: 600, yoyo: true, duration: 120 }); burst(this, ev.x, 600, 'pSpark', 8, N.cyan); } }
-        if (dmg > 0) { S.hats = Math.max(0, S.hats - dmg); SFX.hurt(); this.cameras.main.shake(160, 0.01); this.tweens.add({ targets: this.thief, x: 480, yoyo: true, duration: 60, repeat: 2, onComplete: () => (this.thief.x = 470) }); }
-        this.drawHUD();
-        if (S.hats <= 0) { this.lose(); break; }
-      } else {
-        SFX.ice(); burst(this, m.mx, m.mBottom - m.heat * m.segH, 'pIce', 10);
-        this.tweens.add({ targets: this.wrangler, x: this.wrangler.x + 10, yoyo: true, duration: 90 });
-        m.heat = Math.max(0, m.heat - it.n); this.drawMeter(m); this.updateMood(m);
-      }
-      await this.wait(380);
-    }
-    if (this.over) return;
-    this.targets().forEach((m) => this.setIntent(m));
-    this.busy = false; this.startTurn();
-  }
-  win() {
-    this.over = true; this.ghost.hide();
-    this.time.delayedCall(900, () => {
-      SFX.win();
-      this.tweens.add({ targets: this.wrangler, x: -120, angle: -20, duration: 900, ease: 'Cubic.In' });
-      for (let k = 0; k < 6; k++) this.time.delayedCall(k * 180, () => burst(this, Phaser.Math.Between(80, 460), Phaser.Math.Between(120, 360), pick(['pHeart', 'pCoin', 'pSpark']), 14, undefined, { gravityY: 200 }));
-      this.thief.twirl(); SFX.laugh();
-    });
-    this.time.delayedCall(2600, () => { S.drawPile = null; if (S.round >= 2) this.scene.start('Results', { win: true }); else this.scene.start('Booth'); });
-  }
-  lose() {
-    if (this.over) return; this.over = true; SFX.lose(); this.ghost.hide();
-    const h = this.add.image(470, 410, 'pHat').setScale(2.2).setDepth(120);
-    this.tweens.add({ targets: h, x: 120, y: 900, angle: -720, duration: 1400, ease: 'Bounce.Out' });
-    this.tweens.add({ targets: this.thief, y: 1200, duration: 900, delay: 300, ease: 'Cubic.In' });
-    this.time.delayedCall(2400, () => { S.drawPile = null; this.scene.start('Results', { win: false }); });
-  }
-  update(t, dt) {
-    if (this.over || !this.mons) return;
-    // heartbeat: faster as the riskiest target nears the skull
-    let risk = 0; this.targets().forEach((m) => { risk = Math.max(risk, m.heat / (m.zoneMax + 1)); });
-    if (risk < 0.45) return;
-    this.beatAcc += dt; const interval = Phaser.Math.Linear(1000, 330, (risk - 0.45) / 0.55);
-    if (this.beatAcc >= interval) { this.beatAcc = 0; SFX.beat(0.6 + risk * 0.6); this.targets().forEach((m) => { if (m.heat / (m.zoneMax + 1) >= 0.45) this.tweens.add({ targets: m.meter, alpha: 0.6, yoyo: true, duration: 70 }); }); }
-  }
-}
-
-class Booth extends Phaser.Scene {
-  constructor() { super('Booth'); }
-  create() {
-    this.busy = false; this.leaving = false;
-    background(this); topBar(this);
-    const g = this.add.graphics();
-    // capsule machine
-    const mx = W / 2, my = 520;
-    g.fillStyle(N.ink); g.fillRoundedRect(mx - 120, my - 20, 240, 230, 24); g.fillStyle(N.red); g.fillRoundedRect(mx - 112, my - 12, 224, 214, 20);
-    glowRect(g, mx - 112, my - 12, 224, 214, 20, N.pink, 2);
-    g.fillStyle(N.ink); g.fillCircle(mx, my - 130, 132); g.fillStyle(0xbfe8f0, 0.25); g.fillCircle(mx, my - 130, 124);
-    for (let i = 0; i < 22; i++) { const a = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random()) * 100; const cx = mx + Math.cos(a) * r, cy = my - 110 + Math.abs(Math.sin(a) * r) * 0.6 - 10; g.fillStyle(N.ink); g.fillCircle(cx, cy, 20); g.fillStyle(pick([N.cyan, N.cyan, N.pink, N.gold])); g.fillCircle(cx, cy, 17); g.fillStyle(N.white, 0.5); g.fillCircle(cx - 6, cy - 6, 5); }
-    g.fillStyle(N.white, 0.18); g.fillEllipse(mx - 60, my - 190, 60, 90);
-    glowCircle(g, mx, my - 130, 128, N.cyan, 3);
-    // slot + chute
-    g.fillStyle(N.ink); g.fillRoundedRect(mx - 40, my + 30, 80, 16, 6); g.fillStyle(N.gold); g.fillRect(mx - 26, my + 35, 52, 5);
-    g.fillStyle(N.ink); g.fillRoundedRect(mx - 50, my + 120, 100, 70, 14); g.fillStyle(0x2a0a14); g.fillRoundedRect(mx - 42, my + 128, 84, 54, 10);
-    // crank
-    this.crank = this.add.container(mx + 150, my + 70); const cg = this.add.graphics();
-    cg.fillStyle(N.ink); cg.fillCircle(0, 0, 26); cg.fillStyle(N.gold); cg.fillCircle(0, 0, 20); cg.lineStyle(12, N.ink); cg.lineBetween(0, 0, 0, -56); cg.lineStyle(7, N.gold); cg.lineBetween(0, 0, 0, -54);
-    cg.fillStyle(N.ink); cg.fillCircle(0, -58, 16); cg.fillStyle(N.pink); cg.fillCircle(0, -58, 12);
-    this.crank.add(cg); this.crank.setSize(120, 160).setInteractive({ useHandCursor: true }); this.crank.on('pointerdown', () => this.pull());
-    this.add.zone(mx, my - 40, 240, 300).setInteractive({ useHandCursor: true }).on('pointerdown', () => this.pull());
-    // token jar
-    this.jar = this.add.graphics(); this.drawJar();
-    // entourage cheering on the ground
-    S.entourage.forEach((e, i) => { const mc = makeMonster(this, 40 + i * 60, 940, e.look, 0.36 / e.look.size); mc.redraw('smitten'); this.tweens.add({ targets: mc, y: 926, yoyo: true, repeat: -1, duration: 300 + i * 40 }); });
-    this.thief = drawThief(this, 470, 900, 0.6);
-    // continue arrow
-    this.next = iconButton(this, W / 2, 860, 40, N.lime, (ag) => { ag.fillStyle(N.ink); ag.fillTriangle(-12, -20, -12, 20, 20, 0); }, () => this.leave()).setDepth(60);
-    this.tweens.add({ targets: this.next, scale: 1.1, yoyo: true, repeat: -1, duration: 400 });
-    this.ghost = ghostHand(this, mx + 160, my + 20);
-    if (S.tokens < 2) { this.ghost.move(W / 2 + 14, 870); this.crank.setAlpha(0.5); }
-  }
-  drawJar() {
-    const g = this.jar; g.clear(); const x = 70, y = 700;
-    g.fillStyle(N.ink); g.fillRoundedRect(x - 46, y - 110, 92, 140, 18); g.fillStyle(0xbfe8f0, 0.35); g.fillRoundedRect(x - 40, y - 104, 80, 128, 14); g.fillStyle(N.gold); g.fillRect(x - 42, y - 122, 84, 14);
-    for (let i = 0; i < S.tokens; i++) { const cx = x - 20 + (i % 3) * 20, cy = y + 6 - Math.floor(i / 3) * 22; heart(g, cx, cy, 10, N.ink); heart(g, cx, cy, 7.5, N.gold); }
-  }
-  async pull() {
-    if (this.busy || this.leaving) return;
-    if (S.tokens < 2) { this.tweens.add({ targets: this.jar, x: 6, yoyo: true, repeat: 3, duration: 50 }); this.ghost.move(W / 2 + 14, 870); return; }
-    this.busy = true; this.ghost.hide(); ac();
-    // two tokens fly into the slot
-    for (let k = 0; k < 2; k++) {
-      S.tokens--; this.drawJar();
-      const t = this.add.image(70, 680, 'pCoin').setScale(1.5).setDepth(80);
-      this.tweens.add({ targets: t, x: W / 2, y: 557, duration: 300, delay: k * 120, ease: 'Cubic.In', onComplete: () => { SFX.coin(); t.destroy(); } });
-    }
-    await new Promise((r) => this.time.delayedCall(450, r));
-    SFX.crank(); this.tweens.add({ targets: this.crank, angle: 360, duration: 450, ease: 'Cubic.InOut', onComplete: () => (this.crank.angle = 0) });
-    this.cameras.main.shake(400, 0.006);
-    await new Promise((r) => this.time.delayedCall(480, r));
-    // roll rarity
-    const r = Math.random(), rarity = r < 0.12 ? 2 : r < 0.45 ? 1 : 0;
-    let card;
-    if (rarity === 2) card = mkCard('wild', 3, 0, 2);
-    else if (rarity === 1) card = pick([mkCard('wild', 1, 1, 1), mkCard(pick(SYMS), 2, 1, 1), mkCard('ice', 0, 0, 1), mkCard(pick(SYMS), 1, 2, 1)]);
-    else card = pick([mkCard(pick(SYMS), 2, 0, 0), mkCard(pick(SYMS), 1, 1, 0), mkCard(pick(SYMS), 1, 0, 0)]);
-    const cap = this.add.container(W / 2, 680).setDepth(90), capG = this.add.graphics(); cap.add(capG);
-    capG.fillStyle(N.ink); capG.fillCircle(0, 0, 34); capG.fillStyle(RAR[rarity]); capG.fillCircle(0, 0, 30); capG.fillStyle(N.white, 0.7); capG.fillRect(-30, -3, 60, 6); capG.fillStyle(N.white, 0.5); capG.fillCircle(-10, -12, 8);
-    cap.setScale(0.4);
-    await new Promise((res) => this.tweens.add({ targets: cap, y: 760, scale: 1.2, angle: 360, duration: 500, ease: 'Bounce.Out', onComplete: res }));
-    // shake harder for rarer
-    for (let k = 0; k < 2 + rarity * 2; k++) { await new Promise((res) => this.tweens.add({ targets: cap, angle: { from: -10 - rarity * 8, to: 10 + rarity * 8 }, duration: 70 - rarity * 10, yoyo: true, onComplete: res })); }
-    SFX.pop(rarity); this.cameras.main.flash(150 + rarity * 100, 255, 255, 255);
-    burst(this, W / 2, 760, 'pSpark', 14 + rarity * 14, RAR[rarity]); if (rarity) burst(this, W / 2, 760, 'pHeart', rarity * 10);
-    cap.destroy();
-    const cv = cardView(this, card, W / 2, 760, 0.3).setDepth(95);
-    await new Promise((res) => this.tweens.add({ targets: cv, y: 640, scale: 1.5, duration: 450, ease: 'Back.Out', onComplete: res }));
-    await new Promise((res) => this.time.delayedCall(700, res));
-    S.deck.push(card);
-    await new Promise((res) => this.tweens.add({ targets: cv, x: 470, y: 820, scale: 0.2, alpha: 0.4, duration: 400, ease: 'Cubic.In', onComplete: res }));
-    cv.destroy(); this.tweens.add({ targets: this.thief, scaleY: 0.66, yoyo: true, duration: 100 });
-    this.busy = false;
-    if (S.tokens < 2) { this.crank.setAlpha(0.5); this.ghost.move(W / 2 + 14, 870); }
-  }
-  leave() {
-    if (this.busy || this.leaving) return; this.leaving = true; SFX.laugh();
-    S.round++; this.cameras.main.fadeOut(300, 22, 11, 30);
-    this.time.delayedCall(320, () => this.scene.start('Heist'));
-  }
-}
-
-class Results extends Phaser.Scene {
-  constructor() { super('Results'); }
-  create(data) {
-    background(this); autoButton(this);
-    if (data.win) {
-      // ride off on the ferris wheel with the whole entourage
-      const fx = 420, fy = 420, fr = 118;
-      const wheel = this.add.container(fx, fy);
-      S.entourage.forEach((e, i) => { const a = i * (Math.PI * 2 / Math.max(1, S.entourage.length)); const mc = makeMonster(this, Math.cos(a) * fr, Math.sin(a) * fr + 20, e.look, 0.3 / e.look.size); mc.redraw('smitten'); wheel.add(mc); });
-      this.tweens.add({ targets: wheel, angle: 360, duration: 9000, repeat: -1 });
-      this.tweens.addCounter({ from: 0, to: 360, duration: 9000, repeat: -1, onUpdate: () => wheel.list.forEach((c) => (c.angle = -wheel.angle)) });
-      const thief = drawThief(this, 170, 800, 1.1); this.time.addEvent({ delay: 900, loop: true, callback: () => thief.twirl() });
-      SFX.laugh(); this.time.delayedCall(800, () => SFX.win());
-      this.time.addEvent({ delay: 350, loop: true, callback: () => burst(this, Phaser.Math.Between(40, 500), Phaser.Math.Between(100, 350), pick(['pHeart', 'pCoin', 'pSpark']), 16, undefined, { gravityY: 150 }) });
-      const lg = this.add.graphics(); lipsIcon(lg, -60, 0, 34); heart(lg, 30, -6, 32, N.pink); lg.fillStyle(N.gold); star(lg, 90, -30, 18, N.gold);
-      const logo = this.add.container(W / 2 - 60, 160, [lg]); this.tweens.add({ targets: logo, scale: 1.1, yoyo: true, repeat: -1, duration: 400 });
-    } else {
-      const sg = this.add.graphics(); sg.fillStyle(N.ink); sg.fillRoundedRect(10, 560, W - 20, 40, 12); sg.fillStyle(0x5a2a3a); sg.fillRoundedRect(16, 562, W - 32, 28, 10);
-      const h = this.add.image(-40, 540, 'pHat').setScale(3);
-      this.tweens.add({ targets: h, x: W + 60, angle: 720, duration: 3500, repeat: -1, delay: 400 });
-      const tg = this.add.graphics(); teethIcon(tg, 0, 0, 60); const t = this.add.container(W / 2, 300, [tg]);
-      this.tweens.add({ targets: t, scaleY: 0.7, yoyo: true, repeat: -1, duration: 250 }); SFX.chomp();
-    }
-    const replay = iconButton(this, W / 2, data.win ? 640 : 780, 46, N.lime, (rg) => { rg.lineStyle(9, N.ink); rg.beginPath(); rg.arc(0, 0, 20, -2.6, 2.2); rg.strokePath(); rg.fillStyle(N.ink); rg.fillTriangle(-24, -28, -2, -16, -24, -2); }, () => { resetRun(); this.scene.start('Heist'); });
-    replay.setScale(0); this.tweens.add({ targets: replay, scale: 1, duration: 500, delay: 1200, ease: 'Back.Out' });
-    this.replay = replay;
-  }
-}
-
-window.game = new Phaser.Game({
-  type: Phaser.AUTO, parent: 'game', backgroundColor: '#160b1e',
-  scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH, width: W, height: H },
-  scene: [Boot, Title, Heist, Booth, Results],
-});
+const sticky = document.getElementById('sticky');
+new IntersectionObserver(([e]) => { sticky.classList.toggle('show', !e.isIntersecting); sticky.setAttribute('aria-hidden', e.isIntersecting); }).observe(document.getElementById('play'));
 </script>
 </body>
 </html>
