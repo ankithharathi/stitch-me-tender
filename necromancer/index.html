@@ -1,0 +1,758 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex, nofollow">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Stitch Me Tender: necRomancer</title>
+<style>
+  :root { --bg: #2b1f3a; }
+  html, body { margin: 0; height: 100%; background: var(--bg); overflow: hidden; touch-action: none; }
+  #game { width: 100vw; height: 100vh; height: 100dvh; }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.80.1/phaser.min.js" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="game"></div>
+<script>
+const W = 540, H = 960;
+const C = {
+  sky: 0x2b1f3a, sky2: 0x47305e, ground: 0xc9a26b, ground2: 0xa9824f, rust: 0xb5532b,
+  green: 0x7be05a, magenta: 0xff4fa3, bone: 0xf3ead7, pink: 0xff6b8b, bolt: 0xffd23f,
+  red: 0xe23b3b, ink: 0x1b1420, moon: 0xfff4c9, stink: 0x9bd14a, white: 0xffffff,
+};
+const RARITY = [C.bone, C.green, C.magenta];
+const SKIN = [0x9fd28a, 0xc7a3e0, 0xf2b38a, 0x8fc6d8, 0xd8d27a, 0xe59aa8, 0xb0b8a0];
+const SLOTS = ['head', 'torso', 'arms', 'legs'];
+const KINDS = ['fang', 'shell', 'heart'];
+
+// ---------- run state ----------
+const S = {
+  round: 0, devotion: 0, harvested: null, muted: false, auto: false,
+  parts: null,
+};
+function rnd(n) { return Math.floor(Math.random() * n); }
+function pick(a) { return a[rnd(a.length)]; }
+function newPart(slot, rarity, kind) {
+  return { slot, rarity, level: rarity + 1, kind: kind || pick(KINDS), variant: rnd(3), color: pick(SKIN) };
+}
+function resetRun() {
+  S.round = 0; S.devotion = 0; S.harvested = null;
+  S.parts = {
+    head: newPart('head', 0, 'fang'), torso: newPart('torso', 0, 'shell'),
+    arms: newPart('arms', 0, 'fang'), legs: newPart('legs', 0, 'heart'),
+  };
+}
+resetRun();
+
+// ---------- audio ----------
+let AC = null;
+function ac() { if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} } if (AC && AC.state === 'suspended') AC.resume(); return AC; }
+function tone(f, d, type = 'square', v = 0.08, slide = 0, delay = 0) {
+  if (S.muted) return; const a = ac(); if (!a) return;
+  const t = a.currentTime + delay, o = a.createOscillator(), g = a.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, t);
+  if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, f + slide), t + d);
+  g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+  o.connect(g); g.connect(a.destination); o.start(t); o.stop(t + d + 0.02);
+}
+function noise(d, v = 0.1, delay = 0, hp = 800) {
+  if (S.muted) return; const a = ac(); if (!a) return;
+  const t = a.currentTime + delay, b = a.createBuffer(1, a.sampleRate * d, a.sampleRate), ch = b.getChannelData(0);
+  for (let i = 0; i < ch.length; i++) ch[i] = (Math.random() * 2 - 1) * (1 - i / ch.length);
+  const s = a.createBufferSource(), g = a.createGain(), f = a.createBiquadFilter();
+  f.type = 'highpass'; f.frequency.value = hp; s.buffer = b; g.gain.value = v;
+  s.connect(f); f.connect(g); g.connect(a.destination); s.start(t);
+}
+const SFX = {
+  cackle() { for (let i = 0; i < 7; i++) tone(520 - i * 30 + Math.random() * 60, 0.09, 'square', 0.07, -120, i * 0.11); },
+  dig() { noise(0.15, 0.15, 0, 300); tone(90, 0.12, 'sine', 0.2, -40); },
+  reveal(r) { [0, 1, 2, 3].slice(0, r + 2).forEach((i) => tone(440 * Math.pow(1.26, i + r * 2), 0.18, 'triangle', 0.09, 0, i * 0.08)); },
+  whoosh() { noise(0.2, 0.08, 0, 1500); },
+  pop() { tone(660, 0.1, 'sine', 0.12, 400); },
+  stink() { tone(70, 0.4, 'sawtooth', 0.12, -30); noise(0.3, 0.05, 0, 200); },
+  beat(fast) { tone(60, 0.12, 'sine', 0.3, -20); tone(55, 0.12, 'sine', 0.25, -20, fast ? 0.12 : 0.18); },
+  zap() { noise(0.5, 0.25, 0, 2000); tone(1200, 0.4, 'sawtooth', 0.06, -1000); },
+  kiss() { tone(900, 0.06, 'sine', 0.15, 600); tone(1400, 0.08, 'sine', 0.1, -500, 0.07); },
+  splat() { noise(0.18, 0.2, 0, 400); tone(140, 0.15, 'square', 0.1, -80); },
+  boing() { tone(200, 0.4, 'sine', 0.2, 300); },
+  block() { tone(300, 0.08, 'square', 0.08); tone(250, 0.1, 'square', 0.08, 0, 0.05); },
+  win() { [523, 659, 784, 1046].forEach((f, i) => tone(f, 0.25, 'triangle', 0.1, 0, i * 0.12)); },
+  lose() { [400, 330, 260, 180].forEach((f, i) => tone(f, 0.3, 'triangle', 0.1, -30, i * 0.18)); },
+};
+
+// ---------- drawing helpers ----------
+function heartPath(g, x, y, s, color, outline = true) {
+  if (outline) { g.fillStyle(C.ink); g.fillCircle(x - s * 0.5, y - s * 0.2, s * 0.62); g.fillCircle(x + s * 0.5, y - s * 0.2, s * 0.62); g.fillTriangle(x - s * 1.12, y, x + s * 1.12, y, x, y + s * 1.25); }
+  g.fillStyle(color); g.fillCircle(x - s * 0.5, y - s * 0.2, s * 0.5); g.fillCircle(x + s * 0.5, y - s * 0.2, s * 0.5);
+  g.fillTriangle(x - s * 0.98, y - s * 0.05, x + s * 0.98, y - s * 0.05, x, y + s * 1.05);
+}
+function drawIcon(g, kind, x, y, s, color) {
+  if (kind === 'heart') heartPath(g, x, y, s * 0.8, color || C.pink);
+  else if (kind === 'fang') {
+    g.fillStyle(C.ink); g.fillTriangle(x - s * 0.7, y - s * 0.8, x + s * 0.7, y - s * 0.8, x, y + s * 1.0);
+    g.fillStyle(color || C.white); g.fillTriangle(x - s * 0.5, y - s * 0.66, x + s * 0.5, y - s * 0.66, x, y + s * 0.7);
+  } else if (kind === 'shell') {
+    g.fillStyle(C.ink); g.fillRoundedRect(x - s * 0.75, y - s * 0.85, s * 1.5, s * 1.0, s * 0.3); g.fillTriangle(x - s * 0.75, y - s * 0.1, x + s * 0.75, y - s * 0.1, x, y + s * 1.0);
+    g.fillStyle(color || 0x6fb6ff); g.fillRoundedRect(x - s * 0.58, y - s * 0.7, s * 1.16, s * 0.8, s * 0.22); g.fillTriangle(x - s * 0.58, y - s * 0.1, x + s * 0.58, y - s * 0.1, x, y + s * 0.78);
+  } else if (kind === 'bolt') {
+    g.fillStyle(C.ink); g.fillPoints([{ x: x + s * 0.3, y: y - s * 1.1 }, { x: x - s * 0.75, y: y + s * 0.2 }, { x: x - s * 0.05, y: y + s * 0.2 }, { x: x - s * 0.35, y: y + s * 1.1 }, { x: x + s * 0.8, y: y - s * 0.25 }, { x: x + s * 0.1, y: y - s * 0.25 }], true);
+    g.fillStyle(color || C.bolt); g.fillPoints([{ x: x + s * 0.18, y: y - s * 0.8 }, { x: x - s * 0.52, y: y + s * 0.08 }, { x: x + s * 0.08, y: y + s * 0.08 }, { x: x - s * 0.18, y: y + s * 0.8 }, { x: x + s * 0.56, y: y - s * 0.15 }, { x: x - s * 0.02, y: y - s * 0.15 }], true);
+  } else if (kind === 'skull') {
+    g.fillStyle(C.ink); g.fillCircle(x, y - s * 0.15, s * 0.8); g.fillRoundedRect(x - s * 0.5, y + s * 0.2, s, s * 0.6, s * 0.15);
+    g.fillStyle(color || C.bone); g.fillCircle(x, y - s * 0.15, s * 0.64); g.fillRoundedRect(x - s * 0.36, y + s * 0.2, s * 0.72, s * 0.45, s * 0.1);
+    g.fillStyle(C.ink); g.fillCircle(x - s * 0.25, y - s * 0.15, s * 0.18); g.fillCircle(x + s * 0.25, y - s * 0.15, s * 0.18);
+  }
+}
+function stitches(g, x1, y1, x2, y2, n = 4) {
+  g.lineStyle(3, C.ink); g.lineBetween(x1, y1, x2, y2);
+  const dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy) || 1, nx = -dy / len * 7, ny = dx / len * 7;
+  for (let i = 1; i <= n; i++) { const t = i / (n + 1), px = x1 + dx * t, py = y1 + dy * t; g.lineBetween(px - nx, py - ny, px + nx, py + ny); }
+}
+function face(g, x, y, s, mood) {
+  // googly eyes
+  const ey = y - s * 0.1;
+  g.fillStyle(C.ink); g.fillCircle(x - s * 0.32, ey, s * 0.26); g.fillCircle(x + s * 0.32, ey, s * 0.22);
+  g.fillStyle(C.white); g.fillCircle(x - s * 0.32, ey, s * 0.2); g.fillCircle(x + s * 0.32, ey, s * 0.16);
+  g.fillStyle(mood === 'angry' ? C.red : C.ink); g.fillCircle(x - s * 0.28, ey + s * 0.04, s * 0.09); g.fillCircle(x + s * 0.35, ey + s * 0.03, s * 0.08);
+  if (mood !== 'angry') { g.fillStyle(C.pink, 0.75); g.fillCircle(x - s * 0.55, y + s * 0.22, s * 0.13); g.fillCircle(x + s * 0.55, y + s * 0.22, s * 0.13); }
+  g.lineStyle(4, C.ink);
+  if (mood === 'sad' || mood === 'angry') { g.beginPath(); g.arc(x, y + s * 0.48, s * 0.2, Math.PI * 1.15, Math.PI * 1.85); g.strokePath(); }
+  else { g.beginPath(); g.arc(x, y + s * 0.18, s * 0.22, Math.PI * 0.15, Math.PI * 0.85); g.strokePath(); g.fillStyle(C.white); g.fillTriangle(x - s * 0.12, y + s * 0.36, x - s * 0.02, y + s * 0.36, x - s * 0.07, y + s * 0.5); }
+}
+// draws a stitched monster into a container; origin at feet center
+function makeMonster(scene, x, y, parts, scale = 1, mood = 'happy') {
+  const cont = scene.add.container(x, y);
+  const g = scene.add.graphics(); cont.add(g);
+  const L = parts.legs, T = parts.torso, A = parts.arms, Hd = parts.head;
+  const ol = (fn) => { g.fillStyle(C.ink); fn(6); };
+  // legs
+  const legW = [26, 34, 20][L.variant], legH = [60, 46, 74][L.variant];
+  [-30, 30].forEach((lx) => {
+    g.fillStyle(C.ink); g.fillRoundedRect(lx - legW / 2 - 4, -legH - 4, legW + 8, legH + 8, 10);
+    g.fillStyle(L.color); g.fillRoundedRect(lx - legW / 2, -legH, legW, legH, 8);
+    g.fillStyle(C.ink); g.fillEllipse(lx + 6, -2, legW + 26, 20); g.fillStyle(L.color); g.fillEllipse(lx + 6, -4, legW + 16, 12);
+  });
+  // torso
+  const tw = [130, 110, 150][T.variant], th = [110, 130, 96][T.variant], ty = -legH - th / 2 + 10;
+  g.fillStyle(C.ink);
+  if (T.variant === 1) g.fillEllipse(0, ty, tw + 10, th + 10); else g.fillRoundedRect(-tw / 2 - 5, ty - th / 2 - 5, tw + 10, th + 10, T.variant === 0 ? 30 : 14);
+  g.fillStyle(T.color);
+  if (T.variant === 1) g.fillEllipse(0, ty, tw, th); else g.fillRoundedRect(-tw / 2, ty - th / 2, tw, th, T.variant === 0 ? 26 : 10);
+  g.fillStyle(0x000000, 0.12); g.fillCircle(-tw * 0.2, ty + 10, 14); g.fillCircle(tw * 0.18, ty - 18, 9);
+  stitches(g, -tw * 0.35, ty - th * 0.1, tw * 0.3, ty + th * 0.25, 5);
+  // arms
+  const aw = [24, 32, 18][A.variant], ah = [80, 66, 100][A.variant];
+  [-1, 1].forEach((sd) => {
+    const ax = sd * (tw / 2 + 4), ay = ty - th * 0.3;
+    g.fillStyle(C.ink); g.fillRoundedRect(ax - aw / 2 - 4 + sd * 8, ay - 4, aw + 8, ah + 8, 12);
+    g.fillStyle(A.color); g.fillRoundedRect(ax - aw / 2 + sd * 8, ay, aw, ah, 10);
+    g.fillStyle(C.ink); g.fillCircle(ax + sd * 8, ay + ah + 4, aw * 0.75 + 4); g.fillStyle(A.color); g.fillCircle(ax + sd * 8, ay + ah + 4, aw * 0.75);
+    stitches(g, ax + sd * 8 - aw / 2, ay + 10, ax + sd * 8 + aw / 2, ay + 10, 2);
+  });
+  // head
+  const hs = [56, 50, 62][Hd.variant], hy = ty - th / 2 - hs * 0.75;
+  g.fillStyle(C.ink);
+  if (Hd.variant === 1) g.fillRoundedRect(-hs - 5, hy - hs - 5, hs * 2 + 10, hs * 2 + 10, 16); else g.fillCircle(0, hy, hs + 5);
+  g.fillStyle(Hd.color);
+  if (Hd.variant === 1) g.fillRoundedRect(-hs, hy - hs, hs * 2, hs * 2, 12); else g.fillCircle(0, hy, hs);
+  // neck bolts
+  [-1, 1].forEach((sd) => { g.fillStyle(C.ink); g.fillRoundedRect(sd * (hs + 2) - 9, hy + hs * 0.35, 18, 16, 4); g.fillStyle(0x9aa0a8); g.fillRoundedRect(sd * (hs + 2) - 6, hy + hs * 0.35 + 3, 12, 10, 3); });
+  stitches(g, -hs * 0.6, hy - hs * 0.62, hs * 0.5, hy - hs * 0.7, 4);
+  if (Hd.variant === 2) { // cyclops-ish with tuft
+    g.fillStyle(C.ink); g.fillTriangle(-10, hy - hs - 18, 10, hy - hs - 18, 0, hy - hs + 4);
+  }
+  face(g, 0, hy, hs, mood);
+  cont.setScale(scale);
+  cont.headY = hy * scale; cont.height_ = (-hy + hs) * scale;
+  return cont;
+}
+function drawScientist(scene, x, y, s = 1, flip = false) {
+  const c = scene.add.container(x, y), g = scene.add.graphics(); c.add(g);
+  // coat
+  g.fillStyle(C.ink); g.fillRoundedRect(-44, -150, 88, 150, 20); g.fillStyle(0xeef2f0); g.fillRoundedRect(-38, -144, 76, 140, 16);
+  g.fillStyle(0xc9d3cf); g.fillTriangle(-6, -140, 6, -140, 0, -60);
+  g.fillStyle(C.red, 0.7); g.fillCircle(-18, -60, 6); g.fillCircle(20, -40, 4); // suspicious stains
+  // head
+  g.fillStyle(C.ink); g.fillCircle(0, -184, 40); g.fillStyle(0xf2d2b0); g.fillCircle(0, -184, 34);
+  // wild hair
+  g.fillStyle(C.ink); for (let i = 0; i < 7; i++) { const a = Math.PI + i * Math.PI / 6; g.fillTriangle(Math.cos(a) * 30, -190 + Math.sin(a) * 30, Math.cos(a) * 58, -194 + Math.sin(a) * 52, Math.cos(a + 0.3) * 30, -190 + Math.sin(a + 0.3) * 30); }
+  g.fillStyle(0xf3f3f3); for (let i = 0; i < 7; i++) { const a = Math.PI + i * Math.PI / 6; g.fillTriangle(Math.cos(a) * 30, -190 + Math.sin(a) * 30, Math.cos(a) * 52, -194 + Math.sin(a) * 46, Math.cos(a + 0.25) * 30, -190 + Math.sin(a + 0.25) * 30); }
+  // goggles
+  g.fillStyle(C.ink); g.fillRect(-36, -196, 72, 8); g.fillCircle(-14, -190, 15); g.fillCircle(14, -190, 15);
+  g.fillStyle(C.green); g.fillCircle(-14, -190, 10); g.fillCircle(14, -190, 10); g.fillStyle(C.white); g.fillCircle(-17, -193, 3); g.fillCircle(11, -193, 3);
+  // grin
+  g.fillStyle(C.ink); g.fillEllipse(0, -162, 34, 14); g.fillStyle(C.white); g.fillRect(-12, -167, 24, 5);
+  c.setScale(flip ? -s : s, s);
+  return c;
+}
+function background(scene, tint) {
+  const g = scene.add.graphics();
+  g.fillGradientStyle(C.sky, C.sky, C.sky2, C.sky2, 1); g.fillRect(0, 0, W, H);
+  g.fillStyle(C.moon, 0.15); g.fillCircle(420, 140, 110); g.fillStyle(C.moon); g.fillCircle(420, 140, 72);
+  g.fillStyle(0xe8dca8); g.fillCircle(400, 125, 12); g.fillCircle(440, 160, 8);
+  // stars
+  for (let i = 0; i < 40; i++) { g.fillStyle(C.white, Math.random() * 0.7 + 0.2); g.fillCircle(Math.random() * W, Math.random() * 420, Math.random() * 2 + 0.5); }
+  // ruined skyline
+  g.fillStyle(0x1f1630); [[0, 420, 60, 140], [55, 380, 50, 180], [100, 440, 70, 120], [380, 400, 40, 160], [415, 360, 60, 200], [470, 430, 70, 130]].forEach(([x, y, w, h]) => g.fillRect(x, y, w, h));
+  // pylon
+  g.lineStyle(5, 0x1f1630); g.lineBetween(250, 560, 280, 330); g.lineBetween(310, 560, 280, 330); g.lineBetween(240, 380, 320, 380); g.lineBetween(255, 450, 305, 450); g.lineBetween(240, 380, 200, 420);
+  // ground
+  g.fillStyle(C.ground2); g.fillRect(0, 540, W, H - 540);
+  g.fillStyle(C.ground); g.fillEllipse(W / 2, 580, W * 1.6, 120); g.fillRect(0, 580, W, H);
+  g.fillStyle(C.ground2, 0.6); for (let i = 0; i < 18; i++) g.fillEllipse(Math.random() * W, 620 + Math.random() * 340, 30 + Math.random() * 40, 8);
+  // tires
+  [[40, 600], [500, 640]].forEach(([x, y]) => { g.fillStyle(C.ink); g.fillEllipse(x, y, 70, 26); g.fillStyle(0x3a3240); g.fillEllipse(x, y, 30, 10); });
+  if (tint) { g.fillStyle(tint, 0.12); g.fillRect(0, 0, W, H); }
+  // drifting dust
+  for (let i = 0; i < 12; i++) {
+    const d = scene.add.circle(Math.random() * W, 500 + Math.random() * 400, 2 + Math.random() * 3, C.ground, 0.5);
+    scene.tweens.add({ targets: d, x: d.x + 200, alpha: 0, duration: 4000 + Math.random() * 3000, repeat: -1, delay: Math.random() * 3000 });
+  }
+  return g;
+}
+function progressPips(scene) {
+  autoButton(scene);
+  const g = scene.add.graphics();
+  for (let i = 0; i < 3; i++) drawIcon(g, 'skull', W / 2 - 50 + i * 50, 40, 16, i < S.round ? 0x5a5060 : (i === S.round ? C.bone : 0x8a7f8e));
+  if (S.round < 3) { const r = scene.add.circle(W / 2 - 50 + S.round * 50, 40, 22); r.setStrokeStyle(4, C.bolt); scene.tweens.add({ targets: r, scale: 1.15, yoyo: true, repeat: -1, duration: 500 }); }
+  // mute toggle
+  const mg = scene.add.graphics(); const drawM = () => { mg.clear(); mg.fillStyle(C.ink, 0.6); mg.fillCircle(W - 40, 40, 24); mg.fillStyle(C.bone); mg.fillRect(W - 52, 33, 8, 14); mg.fillTriangle(W - 46, 40, W - 34, 28, W - 34, 52); if (S.muted) { mg.lineStyle(4, C.red); mg.lineBetween(W - 56, 26, W - 24, 54); } else { mg.lineStyle(3, C.bone); mg.beginPath(); mg.arc(W - 30, 40, 8, -0.8, 0.8); mg.strokePath(); } };
+  drawM(); scene.add.zone(W - 40, 40, 60, 60).setInteractive().on('pointerdown', () => { S.muted = !S.muted; drawM(); });
+}
+function ghostHand(scene, x, y) {
+  const g = scene.add.graphics();
+  g.fillStyle(C.white, 0.85); g.fillRoundedRect(-10, -6, 20, 46, 10); g.fillRoundedRect(-24, 22, 48, 40, 14); g.fillCircle(-18, 26, 9);
+  g.lineStyle(3, C.ink, 0.8); g.strokeRoundedRect(-10, -6, 20, 46, 10); g.strokeRoundedRect(-24, 22, 48, 40, 14);
+  const c = scene.add.container(x, y, [g]).setDepth(100);
+  const tw = scene.tweens.add({ targets: c, y: y + 18, scale: 0.9, yoyo: true, repeat: -1, duration: 450, ease: 'Sine.InOut' });
+  c.move = (nx, ny) => { tw.stop(); c.setPosition(nx, ny); c.tw = scene.tweens.add({ targets: c, y: ny + 18, scale: 0.9, yoyo: true, repeat: -1, duration: 450, ease: 'Sine.InOut' }); c.setVisible(true); };
+  return c;
+}
+function burst(scene, x, y, key, n = 12, tint) {
+  const p = scene.add.particles(x, y, key, { speed: { min: 120, max: 380 }, angle: { min: 0, max: 360 }, scale: { start: 1, end: 0 }, lifespan: 800, gravityY: 400, quantity: n, emitting: false, tint });
+  p.setDepth(90); p.explode(n); scene.time.delayedCall(1200, () => p.destroy());
+}
+function bigButton(scene, x, y, color, drawFn, onTap, r = 52) {
+  const c = scene.add.container(x, y), g = scene.add.graphics();
+  g.fillStyle(C.ink); g.fillCircle(0, 6, r + 6); g.fillStyle(color); g.fillCircle(0, 0, r); g.fillStyle(C.white, 0.25); g.fillEllipse(-r * 0.3, -r * 0.4, r * 0.8, r * 0.4);
+  c.add(g); const ig = scene.add.graphics(); drawFn(ig); c.add(ig);
+  c.setSize(r * 2, r * 2).setInteractive({ useHandCursor: true });
+  c.on('pointerdown', () => { scene.tweens.add({ targets: c, scale: 0.85, yoyo: true, duration: 90 }); onTap(); });
+  return c;
+}
+
+
+// ---------- autoplay (robot toggle, top-left) ----------
+function autoButton(scene) {
+  const g = scene.add.graphics().setDepth(300);
+  const draw = () => {
+    g.clear(); const x = 40, y = 40;
+    g.fillStyle(C.ink, 0.6); g.fillCircle(x, y, 24);
+    if (S.auto) { g.lineStyle(4, C.green); g.strokeCircle(x, y, 26); }
+    g.lineStyle(3, S.auto ? C.green : C.bone); g.lineBetween(x, y - 12, x, y - 18); g.fillStyle(S.auto ? C.green : C.bone); g.fillCircle(x, y - 19, 3);
+    g.fillRoundedRect(x - 13, y - 11, 26, 22, 6);
+    g.fillStyle(C.ink); g.fillCircle(x - 6, y - 2, 3.5); g.fillCircle(x + 6, y - 2, 3.5); g.fillRect(x - 6, y + 5, 12, 2);
+  };
+  draw();
+  scene.add.zone(40, 40, 64, 64).setInteractive().setDepth(301).on('pointerdown', (p, lx, ly, ev) => {
+    ac(); S.auto = !S.auto; draw(); if (ev && ev.stopPropagation) ev.stopPropagation();
+  });
+}
+let autoUntil = 0;
+function autoStep() {
+  if (!S.auto || !window.game) return;
+  const now = performance.now(); if (now < autoUntil) return;
+  const s = game.scene.getScenes(true)[0]; if (!s) return;
+  const hold = (ms) => { autoUntil = now + ms; };
+  const P = { x: 0, y: 0 };
+  const live = () => s.children.list.filter((o) => o.input && o.input.enabled && o.active);
+  const k = s.scene.key;
+  if (k === 'Title') { s.input.emit('pointerdown', P); return hold(1200); }
+  if (k === 'Dig') {
+    if (s.zapping) return hold(300);
+    const mounds = live().filter((o) => o.type === 'Container' && o.width === 150);
+    if (mounds.length) { mounds[0].emit('pointerdown', P); return hold(900); }
+    const cards = live().filter((o) => o.type === 'Container' && o.width === 124);
+    if (cards.length) { // apply rarest last so it wins its slot
+      cards.sort((a, b) => (a.partRarity || 0) - (b.partRarity || 0)); cards[0].emit('pointerdown', P); return hold(800);
+    }
+    if (s.lever) { s.lever.emit('pointerdown', P); return hold(2200); }
+    return hold(300);
+  }
+  if (k === 'Date') {
+    if (s.done || s.busy) return hold(250);
+    if ((s.jar >= 4 || s.stinks >= 2) && s.jar > 0) { s.kiss.emit('pointerdown', P); return hold(2500); }
+    s.sack.emit('pointerdown', P); return hold(1000);
+  }
+  if (k === 'Battle') {
+    if (s.over || s.busy || !s.handViews) return hold(300);
+    if (s.energy > 0 && s.handViews.length) {
+      let i = 0;
+      const wantBlock = s.intent && s.intent.kind === 'fang' && s.intent.n >= 2 && s.block === 0;
+      const sh = s.handCards.findIndex((c) => c.kind === 'shell'), ht = s.handCards.findIndex((c) => c.kind === 'heart' && S.devotion >= 2);
+      if (wantBlock && sh >= 0) i = sh; else if (ht >= 0) i = ht; else { const f = s.handCards.findIndex((c) => c.kind !== 'shell'); i = f >= 0 ? f : 0; }
+      s.handViews[i].emit('pointerdown', P); return hold(700);
+    }
+    s.endBtn.emit('pointerdown', P); return hold(1600);
+  }
+  if (k === 'Results') { if (s.replay && s.replay.scale > 0.9) { s.replay.emit('pointerdown', P); return hold(1500); } return hold(500); }
+  hold(300);
+}
+setInterval(autoStep, 120);
+
+// ---------- scenes ----------
+class Boot extends Phaser.Scene {
+  constructor() { super('Boot'); }
+  create() {
+    const mk = (key, w, h, fn) => { const g = this.add.graphics(); fn(g); g.generateTexture(key, w, h); g.destroy(); };
+    mk('pHeart', 32, 32, (g) => heartPath(g, 16, 14, 10, C.pink));
+    mk('pSpark', 16, 16, (g) => { g.fillStyle(C.white); g.fillCircle(8, 8, 6); });
+    mk('pBolt', 32, 32, (g) => drawIcon(g, 'bolt', 16, 16, 12));
+    mk('pGoo', 20, 20, (g) => { g.fillStyle(C.green); g.fillCircle(10, 10, 8); });
+    mk('pDirt', 16, 16, (g) => { g.fillStyle(C.ground2); g.fillCircle(8, 8, 7); });
+    mk('pStink', 40, 40, (g) => { g.fillStyle(C.stink, 0.9); g.fillCircle(14, 22, 12); g.fillCircle(26, 18, 12); g.fillCircle(20, 12, 10); });
+    this.scene.start('Title');
+  }
+}
+
+class Title extends Phaser.Scene {
+  constructor() { super('Title'); }
+  create() {
+    background(this); autoButton(this);
+    // slab + monster silhouette
+    const g = this.add.graphics();
+    g.fillStyle(C.ink); g.fillRoundedRect(90, 650, 360, 40, 10); g.fillStyle(0x6d6a78); g.fillRoundedRect(96, 652, 348, 30, 8);
+    g.fillStyle(C.ink); g.fillRect(120, 690, 20, 90); g.fillRect(400, 690, 20, 90);
+    const m = makeMonster(this, W / 2, 652, S.parts, 0.9, 'happy');
+    this.tweens.add({ targets: m, scaleY: 0.94, yoyo: true, repeat: -1, duration: 700, ease: 'Sine.InOut' });
+    // logo: stitched heart pierced by a bolt
+    const lg = this.add.graphics();
+    heartPath(lg, 0, 0, 90, C.pink); stitches(lg, -40, -50, 30, 40, 5); stitches(lg, 30, -60, -20, 20, 3);
+    lg.fillStyle(C.white, 0.3); lg.fillCircle(-50, -40, 18);
+    drawIcon(lg, 'bolt', 60, -30, 60);
+    face(lg, -6, 0, 44, 'happy');
+    const logo = this.add.container(W / 2, 270, [lg]);
+    this.tweens.add({ targets: logo, scale: 1.08, yoyo: true, repeat: -1, duration: 420, ease: 'Sine.InOut' });
+    // lightning flashes
+    this.time.addEvent({ delay: 2600, loop: true, callback: () => { this.cameras.main.flash(120, 255, 255, 230); } });
+    const hand = ghostHand(this, W / 2 + 40, 820);
+    this.input.once('pointerdown', () => {
+      ac(); SFX.cackle(); SFX.zap(); this.cameras.main.flash(250); this.cameras.main.shake(300, 0.01); hand.destroy();
+      resetRun();
+      this.time.delayedCall(600, () => this.scene.start('Dig'));
+    });
+  }
+}
+
+class Dig extends Phaser.Scene {
+  constructor() { super('Dig'); }
+  create() {
+    this.lever = null; this.zapping = false;
+    background(this); progressPips(this);
+    // tombstones
+    const g = this.add.graphics();
+    [[60, 240], [480, 250], [270, 200]].forEach(([x, y]) => { g.fillStyle(C.ink); g.fillRoundedRect(x - 26, y - 50, 52, 70, { tl: 26, tr: 26, bl: 4, br: 4 }); g.fillStyle(0x8c8496); g.fillRoundedRect(x - 20, y - 44, 40, 60, { tl: 20, tr: 20, bl: 2, br: 2 }); g.lineStyle(4, C.ink); g.lineBetween(x, y - 30, x, y); g.lineBetween(x - 10, y - 20, x + 10, y - 20); });
+    // slab + monster
+    g.fillStyle(C.ink); g.fillRoundedRect(110, 800, 320, 34, 10); g.fillStyle(0x6d6a78); g.fillRoundedRect(116, 802, 308, 24, 8);
+    this.monster = makeMonster(this, W / 2, 802, S.parts, 0.72);
+    this.cards = []; this.dug = 0; this.used = 0;
+    const xs = [100, 270, 440];
+    this.hand = ghostHand(this, xs[0] + 20, 420);
+    xs.forEach((x, i) => {
+      const r = Math.random(); let rarity = r < 0.12 + S.round * 0.06 ? 2 : r < 0.5 ? 1 : 0;
+      let part = newPart(pick(SLOTS), rarity);
+      if (i === 1 && S.harvested) { part = S.harvested; S.harvested = null; }
+      const mg = this.add.graphics(); mg.fillStyle(C.ink); mg.fillEllipse(0, 0, 150, 70); mg.fillStyle(0x7a5a38); mg.fillEllipse(0, -6, 138, 56); mg.fillStyle(0x8f6a44); mg.fillEllipse(-16, -14, 60, 22);
+      const mound = this.add.container(x, 400, [mg]).setSize(150, 90).setInteractive({ useHandCursor: true });
+      // glow tell before digging
+      const glow = this.add.ellipse(x, 395, 170, 84, RARITY[part.rarity], part.rarity ? 0.35 : 0.12);
+      this.tweens.add({ targets: glow, alpha: 0.05, yoyo: true, repeat: -1, duration: 600 - part.rarity * 150 });
+      this.children.moveBelow(glow, mound);
+      if (part.rarity) this.tweens.add({ targets: mound, x: x + part.rarity * 2, yoyo: true, repeat: -1, duration: 60 + (2 - part.rarity) * 60 });
+      mound.once('pointerdown', () => this.digMound(mound, glow, part, x));
+    });
+  }
+  digMound(mound, glow, part, x) {
+    ac(); SFX.dig(); burst(this, x, 400, 'pDirt', 18);
+    mound.disableInteractive(); this.tweens.killTweensOf(mound); glow.destroy();
+    this.tweens.add({ targets: mound, scaleY: 0.4, alpha: 0.6, duration: 200 });
+    this.cameras.main.shake(150 + part.rarity * 150, 0.004 + part.rarity * 0.006);
+    const card = this.makeCard(part, x, 400);
+    card.setScale(0.2); card.y = 420;
+    this.tweens.add({ targets: card, y: 470, scale: 1, angle: 360, duration: 600, ease: 'Back.Out' });
+    this.time.delayedCall(250, () => { SFX.reveal(part.rarity); if (part.rarity) burst(this, x, 470, 'pSpark', 10 + part.rarity * 12, RARITY[part.rarity]); });
+    this.dug++;
+    const next = this.cards.length;
+    if (this.dug < 3) { const xs = [100, 270, 440]; const remaining = this.children.list.filter((o) => o.input && o.input.enabled && o.type === 'Container' && o.y === 400); this.hand.move((remaining[0] ? remaining[0].x : xs[this.dug]) + 20, 420); }
+    else this.hand.move(this.cards[0] ? this.cards[0].x + 20 : 120, 520);
+    card.setInteractive({ useHandCursor: true }).once('pointerdown', () => this.usePart(card, part));
+  }
+  makeCard(part, x, y) {
+    const c = this.add.container(x, y), g = this.add.graphics();
+    g.fillStyle(C.ink); g.fillRoundedRect(-62, -82, 124, 164, 16);
+    g.fillStyle(RARITY[part.rarity]); g.fillRoundedRect(-56, -76, 112, 152, 12);
+    g.fillStyle(0x3a2c48); g.fillRoundedRect(-48, -68, 96, 96, 10);
+    c.add(g);
+    // part preview
+    const pv = this.add.graphics(); c.add(pv);
+    pv.fillStyle(C.ink);
+    const col = part.color;
+    if (part.slot === 'head') { pv.fillCircle(0, -20, 34); pv.fillStyle(col); pv.fillCircle(0, -20, 29); face(pv, 0, -20, 28, 'happy'); }
+    else if (part.slot === 'torso') { pv.fillRoundedRect(-36, -52, 72, 66, 18); pv.fillStyle(col); pv.fillRoundedRect(-31, -47, 62, 56, 14); stitches(pv, -20, -30, 18, -6, 3); }
+    else if (part.slot === 'arms') { pv.fillRoundedRect(-36, -58, 26, 72, 10); pv.fillRoundedRect(10, -58, 26, 72, 10); pv.fillStyle(col); pv.fillRoundedRect(-32, -54, 18, 64, 8); pv.fillRoundedRect(14, -54, 18, 64, 8); pv.fillStyle(C.ink); pv.fillCircle(-23, 14, 14); pv.fillCircle(23, 14, 14); pv.fillStyle(col); pv.fillCircle(-23, 14, 10); pv.fillCircle(23, 14, 10); }
+    else { pv.fillRoundedRect(-34, -56, 26, 70, 10); pv.fillRoundedRect(8, -56, 26, 70, 10); pv.fillStyle(col); pv.fillRoundedRect(-30, -52, 18, 62, 8); pv.fillRoundedRect(12, -52, 18, 62, 8); pv.fillStyle(C.ink); pv.fillEllipse(-16, 14, 40, 16); pv.fillEllipse(26, 14, 40, 16); }
+    // markers
+    const mg = this.add.graphics(); c.add(mg);
+    for (let i = 0; i < part.level; i++) drawIcon(mg, part.kind, (i - (part.level - 1) / 2) * 30, 52, 12);
+    if (part.rarity === 2) { const sp = this.add.circle(40, -60, 6, C.white); c.add(sp); this.tweens.add({ targets: sp, scale: 0.2, yoyo: true, repeat: -1, duration: 300 }); }
+    c.setSize(124, 164); c.partRarity = part.rarity;
+    this.cards.push(c);
+    return c;
+  }
+  usePart(card, part) {
+    SFX.whoosh(); this.hand.setVisible(false);
+    this.tweens.add({ targets: card, x: W / 2, y: 720, scale: 0.2, angle: 180, duration: 400, ease: 'Cubic.In', onComplete: () => {
+      card.destroy(); S.parts[part.slot] = part;
+      const old = this.monster; this.monster = makeMonster(this, W / 2, 802, S.parts, 0.72); old.destroy();
+      this.monster.setScale(0.6); this.tweens.add({ targets: this.monster, scale: 0.72, duration: 400, ease: 'Elastic.Out' });
+      SFX.pop(); burst(this, W / 2, 700, 'pGoo', 14);
+      this.used++;
+      if (this.dug === 3) this.showLever();
+    } });
+    if (this.dug === 3 && !this.lever) this.showLever();
+  }
+  showLever() {
+    if (this.lever) return;
+    this.lever = bigButton(this, 460, 900, C.bolt, (g) => drawIcon(g, 'bolt', 0, 0, 30, C.white), () => this.zap(), 46);
+    this.lever.setScale(0); this.tweens.add({ targets: this.lever, scale: 1, duration: 400, ease: 'Back.Out' });
+    this.tweens.add({ targets: this.lever, angle: 8, yoyo: true, repeat: -1, duration: 200, delay: 400 });
+    this.hand.move(480, 900);
+  }
+  zap() {
+    if (this.zapping) return; this.zapping = true; this.hand.destroy();
+    const lg = this.add.graphics().setDepth(80);
+    lg.lineStyle(10, C.bolt); lg.beginPath(); lg.moveTo(W / 2 + 30, 0); lg.lineTo(W / 2 - 40, 300); lg.lineTo(W / 2 + 30, 320); lg.lineTo(W / 2 - 20, 650); lg.strokePath();
+    lg.lineStyle(4, C.white); lg.beginPath(); lg.moveTo(W / 2 + 30, 0); lg.lineTo(W / 2 - 40, 300); lg.lineTo(W / 2 + 30, 320); lg.lineTo(W / 2 - 20, 650); lg.strokePath();
+    SFX.zap(); this.cameras.main.flash(300); this.cameras.main.shake(400, 0.02);
+    this.time.delayedCall(150, () => lg.destroy());
+    burst(this, W / 2, 680, 'pBolt', 16);
+    this.tweens.add({ targets: this.monster, y: 760, angle: { from: -6, to: 6 }, yoyo: true, repeat: 3, duration: 120 });
+    const sci = drawScientist(this, 80, 960, 0.8); sci.y = 1200;
+    this.tweens.add({ targets: sci, y: 960, duration: 300, ease: 'Back.Out', onComplete: () => { SFX.cackle(); this.tweens.add({ targets: sci, angle: { from: -5, to: 5 }, yoyo: true, repeat: 5, duration: 90 }); } });
+    this.time.delayedCall(1600, () => this.scene.start('Date'));
+  }
+}
+
+const GOOD = ['flower', 'eye', 'beans', 'duck', 'fish'], BAD = ['rat', 'sock'];
+function drawGift(g, kind, x, y, s = 1) {
+  g.fillStyle(C.ink);
+  if (kind === 'flower') { g.lineStyle(6 * s, 0x4f8a3a); g.lineBetween(x, y + 30 * s, x, y); for (let i = 0; i < 5; i++) { const a = i * 1.256; g.fillStyle(C.ink); g.fillCircle(x + Math.cos(a) * 14 * s, y - 6 * s + Math.sin(a) * 14 * s, 11 * s); g.fillStyle(C.rust); g.fillCircle(x + Math.cos(a) * 14 * s, y - 6 * s + Math.sin(a) * 14 * s, 8 * s); } g.fillStyle(C.bolt); g.fillCircle(x, y - 6 * s, 8 * s); }
+  else if (kind === 'eye') { g.fillCircle(x, y, 26 * s); g.fillStyle(C.white); g.fillCircle(x, y, 22 * s); g.fillStyle(0x3fa0e0); g.fillCircle(x + 5 * s, y, 11 * s); g.fillStyle(C.ink); g.fillCircle(x + 6 * s, y, 5 * s); g.lineStyle(2, C.red); g.lineBetween(x - 18 * s, y - 6 * s, x - 8 * s, y - 2 * s); g.lineBetween(x - 16 * s, y + 10 * s, x - 6 * s, y + 4 * s); }
+  else if (kind === 'beans') { g.fillRoundedRect(x - 22 * s, y - 28 * s, 44 * s, 56 * s, 6 * s); g.fillStyle(0xb8c0c8); g.fillRoundedRect(x - 18 * s, y - 24 * s, 36 * s, 48 * s, 4 * s); g.fillStyle(C.rust); g.fillRect(x - 18 * s, y - 10 * s, 36 * s, 22 * s); g.fillStyle(0xe8a050); g.fillCircle(x - 6 * s, y, 4 * s); g.fillCircle(x + 6 * s, y + 3 * s, 4 * s); }
+  else if (kind === 'duck') { g.fillEllipse(x, y + 6 * s, 54 * s, 36 * s); g.fillCircle(x + 14 * s, y - 14 * s, 18 * s); g.fillStyle(C.bolt); g.fillEllipse(x, y + 6 * s, 46 * s, 28 * s); g.fillCircle(x + 14 * s, y - 14 * s, 14 * s); g.fillStyle(0xff9a3a); g.fillTriangle(x + 24 * s, y - 16 * s, x + 24 * s, y - 8 * s, x + 38 * s, y - 12 * s); g.fillStyle(C.ink); g.fillCircle(x + 16 * s, y - 18 * s, 3 * s); }
+  else if (kind === 'fish') { g.lineStyle(5 * s, C.bone); g.lineBetween(x - 24 * s, y, x + 18 * s, y); for (let i = -2; i <= 2; i++) g.lineBetween(x + i * 7 * s, y - 12 * s, x + i * 7 * s, y + 12 * s); g.fillStyle(C.bone); g.fillCircle(x + 22 * s, y, 10 * s); g.fillTriangle(x - 24 * s, y, x - 36 * s, y - 12 * s, x - 36 * s, y + 12 * s); g.fillStyle(C.ink); g.fillCircle(x + 24 * s, y - 2 * s, 3 * s); }
+  else if (kind === 'rat') { g.fillEllipse(x, y, 54 * s, 32 * s); g.fillStyle(0x8a8090); g.fillEllipse(x, y, 46 * s, 26 * s); g.fillCircle(x - 16 * s, y - 12 * s, 7 * s); g.lineStyle(3 * s, 0xe59aa8); g.lineBetween(x + 22 * s, y, x + 36 * s, y + 10 * s); g.lineStyle(3, C.ink); g.lineBetween(x - 6, y - 6, x + 2, y + 2); g.lineBetween(x + 2, y - 6, x - 6, y + 2); g.fillStyle(C.stink, 0.8); g.fillCircle(x + 6 * s, y - 26 * s, 8 * s); g.fillCircle(x - 6 * s, y - 34 * s, 6 * s); }
+  else if (kind === 'sock') { g.fillRoundedRect(x - 14 * s, y - 28 * s, 28 * s, 44 * s, 6 * s); g.fillRoundedRect(x - 14 * s, y + 4 * s, 42 * s, 20 * s, 10 * s); g.fillStyle(0xd8d0a0); g.fillRoundedRect(x - 10 * s, y - 24 * s, 20 * s, 40 * s, 4 * s); g.fillRoundedRect(x - 10 * s, y + 8 * s, 34 * s, 12 * s, 6 * s); g.fillStyle(0x8a7a40); g.fillCircle(x - 2 * s, y - 8 * s, 4 * s); g.fillStyle(C.stink, 0.8); g.fillCircle(x + 14 * s, y - 34 * s, 8 * s); g.fillCircle(x + 2 * s, y - 42 * s, 6 * s); }
+}
+
+class DateScene extends Phaser.Scene {
+  constructor() { super('Date'); }
+  create() {
+    background(this, 0xff6b8b); progressPips(this);
+    this.fav = pick(GOOD);
+    this.bag = Phaser.Utils.Array.Shuffle([...Array(7)].map(() => ({ good: true, kind: Math.random() < 0.3 ? this.fav : pick(GOOD) })).concat([...Array(3)].map(() => ({ good: false, kind: pick(BAD) }))));
+    this.jar = 0; this.stinks = 0; this.done = false; this.busy = false; this.cracked = false; this.redTint = null;
+    const g = this.add.graphics();
+    // picnic blanket + bench tire
+    g.fillStyle(C.ink); g.fillEllipse(W / 2, 760, 480, 110); g.fillStyle(C.red); g.fillEllipse(W / 2, 754, 466, 96);
+    g.fillStyle(C.white, 0.5); for (let i = -3; i <= 3; i++) g.fillRect(W / 2 + i * 60 - 12, 720, 24, 70);
+    this.monster = makeMonster(this, 170, 760, S.parts, 0.62);
+    this.tweens.add({ targets: this.monster, scaleY: 0.6, yoyo: true, repeat: -1, duration: 600, ease: 'Sine.InOut' });
+    this.sci = drawScientist(this, 420, 770, 0.85, true);
+    // thought bubble with favorite gift
+    const bg = this.add.graphics();
+    bg.fillStyle(C.ink); bg.fillCircle(170, 330, 62); bg.fillStyle(C.white); bg.fillCircle(170, 330, 56); bg.fillCircle(150, 410, 12); bg.fillCircle(160, 440, 7);
+    drawGift(bg, this.fav, 170, 330, 1.1); heartPath(bg, 214, 290, 14, C.pink);
+    this.bubble = bg;
+    this.tweens.add({ targets: bg, y: -8, yoyo: true, repeat: -1, duration: 900, ease: 'Sine.InOut' });
+    // jar
+    this.jarG = this.add.graphics(); this.drawJar();
+    // stink row
+    this.stinkG = this.add.graphics();
+    // sack
+    this.sack = this.add.container(W / 2, 880); this.sackG = this.add.graphics(); this.sack.add(this.sackG); this.drawSack();
+    this.sack.setSize(150, 130).setInteractive({ useHandCursor: true }).on('pointerdown', () => this.draw());
+    // kiss button
+    this.kiss = bigButton(this, 460, 880, C.pink, (kg) => { kg.fillStyle(C.ink); kg.fillEllipse(0, 0, 60, 34); kg.fillStyle(C.red); kg.fillEllipse(0, -4, 52, 18); kg.fillEllipse(0, 6, 46, 16); kg.lineStyle(3, C.ink); kg.lineBetween(-24, 1, 24, 1); }, () => this.bank(), 46);
+    this.kiss.setAlpha(0.4);
+    this.hand = ghostHand(this, W / 2 + 30, 860);
+    this.beatT = this.time.addEvent({ delay: 1100, loop: true, callback: () => { if (!this.done) { SFX.beat(this.stinks >= 2); this.tweens.add({ targets: this.jarG, scale: 1.04, yoyo: true, duration: 80 }); } } });
+  }
+  drawJar() {
+    const g = this.jarG; g.clear(); const x = 80, y = 860;
+    g.fillStyle(C.ink); g.fillRoundedRect(x - 44, y - 100, 88, 130, 18); g.fillStyle(0xbfe8f0, 0.55); g.fillRoundedRect(x - 38, y - 94, 76, 118, 14);
+    g.fillStyle(C.rust); g.fillRect(x - 40, y - 112, 80, 16);
+    for (let i = 0; i < this.jar; i++) heartPath(g, x - 16 + (i % 2) * 32, y + 6 - Math.floor(i / 2) * 32, 11, C.pink);
+    if (this.cracked) { g.lineStyle(3, C.ink); g.lineBetween(x - 20, y - 80, x, y - 40); g.lineBetween(x, y - 40, x - 12, y); g.lineBetween(x, y - 40, x + 22, y - 20); }
+  }
+  drawSack() {
+    const g = this.sackG; g.clear(); const full = this.bag.length / 10, w = 90 + full * 60, h = 70 + full * 50;
+    g.fillStyle(C.ink); g.fillEllipse(0, 10, w + 10, h + 10); g.fillStyle(0xb0884f); g.fillEllipse(0, 10, w, h);
+    g.fillStyle(C.ink); g.fillTriangle(-20, -h / 2 + 10, 20, -h / 2 + 10, 0, -h / 2 + 30); g.fillStyle(0xb0884f); g.fillCircle(-16, -h / 2 + 2, 12); g.fillCircle(16, -h / 2 + 2, 12);
+    g.lineStyle(3, C.ink); g.lineBetween(-w * 0.2, 0, w * 0.15, 10); g.fillStyle(0x8d6a3a); g.fillCircle(w * 0.2, 20, 10);
+    heartPath(g, -10, 18, 12, C.pink, false);
+  }
+  draw() {
+    if (this.done || this.busy) return; if (!this.bag.length) return this.bank();
+    ac(); this.busy = true; this.hand.setVisible(false);
+    const item = this.bag.pop(); this.drawSack();
+    this.tweens.add({ targets: this.sack, scaleX: 1.15, scaleY: 0.85, yoyo: true, duration: 90 });
+    const ig = this.add.graphics(); drawGift(ig, item.kind, 0, 0, 1.3);
+    const ic = this.add.container(W / 2, 860, [ig]).setDepth(50);
+    SFX.whoosh();
+    this.tweens.add({ targets: ic, x: 220, y: 520, scale: 1.3, duration: 450, ease: 'Cubic.Out', onComplete: () => {
+      if (item.good) {
+        const add = item.kind === this.fav ? 2 : 1;
+        this.jar = Math.min(6, this.jar + add); SFX.pop(); burst(this, 220, 520, 'pHeart', add * 8);
+        if (add === 2) { SFX.kiss(); this.tweens.add({ targets: this.monster, angle: { from: -8, to: 8 }, yoyo: true, repeat: 2, duration: 100 }); }
+        this.tweens.add({ targets: ic, x: 80, y: 820, scale: 0.2, alpha: 0, duration: 350, onComplete: () => { ic.destroy(); this.drawJar(); this.busy = false; this.kiss.setAlpha(1); this.hint(); } });
+      } else {
+        this.stinks++; SFX.stink(); this.cameras.main.shake(200, 0.01); burst(this, 220, 520, 'pStink', 10);
+        this.drawStinks();
+        this.tweens.add({ targets: ic, alpha: 0, scale: 0.5, duration: 400, delay: 300, onComplete: () => {
+          ic.destroy();
+          if (this.stinks >= 3) this.bust(); else { this.busy = false; this.hint(); }
+        } });
+      }
+    } });
+  }
+  hint() { if (this.jar >= 3 || this.stinks >= 2) this.hand.move(480, 860); }
+  drawStinks() {
+    const g = this.stinkG; g.clear();
+    for (let i = 0; i < this.stinks; i++) { const x = 120 + i * 50, y = 470; g.fillStyle(C.ink); g.fillCircle(x, y, 22); g.fillStyle(C.stink); g.fillCircle(x - 8, y + 4, 13); g.fillCircle(x + 8, y + 2, 13); g.fillCircle(x, y - 8, 12); }
+    if (this.stinks === 2) {
+      this.redTint = this.add.rectangle(W / 2, H / 2, W, H, C.red, 0).setDepth(40);
+      this.tweens.add({ targets: this.redTint, alpha: 0.18, yoyo: true, repeat: -1, duration: 300 });
+      this.beatT.reset({ delay: 450, loop: true, callback: this.beatT.callback, callbackScope: this });
+      const old = this.monster; this.monster = makeMonster(this, 170, 760, S.parts, 0.62, 'sad'); old.destroy();
+      this.tweens.add({ targets: this.monster, x: 176, yoyo: true, repeat: -1, duration: 60 });
+    }
+  }
+  bust() {
+    this.done = true; S.devotion = 0; this.cracked = true; this.jar = 0;
+    const old = this.monster; this.monster = makeMonster(this, 170, 760, S.parts, 0.62, 'angry'); old.destroy();
+    this.tweens.add({ targets: this.monster, x: 330, duration: 180, yoyo: true, ease: 'Cubic.In' });
+    this.time.delayedCall(180, () => { SFX.splat(); SFX.boing(); this.cameras.main.shake(400, 0.03); this.tweens.add({ targets: this.sci, angle: -25, y: 790, duration: 200, yoyo: true }); });
+    this.drawJar(); burst(this, 80, 820, 'pSpark', 14);
+    this.time.delayedCall(1800, () => this.scene.start('Battle'));
+  }
+  bank() {
+    if (this.done || this.busy || this.jar === 0) return; this.done = true; this.hand.destroy();
+    S.devotion = this.jar; SFX.kiss();
+    for (let i = 0; i < this.jar; i++) {
+      const h = this.add.image(80, 820 - i * 10, 'pHeart').setDepth(60).setScale(1.4);
+      this.tweens.add({ targets: h, x: 170 + (Math.random() * 60 - 30), y: 560, duration: 500, delay: i * 120, ease: 'Cubic.Out', onComplete: () => { SFX.pop(); h.destroy(); burst(this, 170, 560, 'pHeart', 4); } });
+    }
+    this.jar = 0; this.time.delayedCall(200, () => this.drawJar());
+    this.tweens.add({ targets: this.sci, x: 300, duration: 400, yoyo: true, hold: 300, delay: 100 });
+    this.time.delayedCall(this.jar * 120 + 1500, () => this.scene.start('Battle'));
+  }
+}
+
+const RIVALS = [
+  { hp: 6, atk: [1, 2], col: [0xb7a07a, 0x9a8c7a], boss: 0 },
+  { hp: 9, atk: [2, 3], col: [0x8b5a4a, 0x6a4a40], boss: 1 },
+  { hp: 12, atk: [2, 4], col: [0x5a7a5a, 0x6a5a7a], boss: 2 },
+];
+class Battle extends Phaser.Scene {
+  constructor() { super('Battle'); }
+  create() {
+    background(this, 0xe23b3b); progressPips(this);
+    const R = RIVALS[S.round]; this.R = R;
+    this.busy = false; this.handViews = null; this.intentC = null;
+    this.php = 8; this.pmax = 8; this.rhp = R.hp; this.block = 0; this.rblock = 0; this.energy = 3; this.over = false;
+    // rival monster
+    const rp = { head: { ...newPart('head', 0), color: R.col[0], variant: R.boss === 2 ? 2 : rnd(3) }, torso: { ...newPart('torso', 0), color: R.col[1], variant: R.boss === 1 ? 2 : rnd(3) }, arms: { ...newPart('arms', 0), color: R.col[0], variant: R.boss ? 1 : 0 }, legs: { ...newPart('legs', 0), color: R.col[1] } };
+    this.rparts = rp;
+    this.rival = makeMonster(this, 300, 400, rp, 0.6 + R.boss * 0.12, 'angry');
+    this.tweens.add({ targets: this.rival, scaleY: this.rival.scaleY * 0.95, yoyo: true, repeat: -1, duration: 500 });
+    // rival villain owner (silhouette)
+    const og = this.add.graphics(); og.fillStyle(0x1f1630);
+    if (R.boss === 0) { og.fillCircle(80, 300, 26); og.fillRoundedRect(54, 324, 52, 80, 16); og.fillStyle(0x6d6a78); og.fillRect(40, 380, 80, 30); og.lineStyle(4, 0x6d6a78); og.strokeCircle(55, 420, 8); og.strokeCircle(105, 420, 8); }
+    else if (R.boss === 1) { og.fillCircle(80, 290, 28); og.fillRoundedRect(46, 318, 68, 96, 20); og.fillStyle(0x6d6a78); og.fillRect(110, 330, 50, 16); og.fillStyle(C.ink); for (let i = 0; i < 5; i++) og.fillTriangle(112 + i * 10, 330, 118 + i * 10, 322, 124 + i * 10, 330); }
+    else { og.fillCircle(80, 290, 28); og.fillRoundedRect(50, 318, 60, 96, 16); og.fillStyle(C.red); og.fillCircle(70, 288, 7); og.fillCircle(90, 288, 7); og.fillStyle(0x1f1630); og.fillRect(56, 254, 48, 14); og.fillRect(66, 220, 28, 36); }
+    // player monster
+    this.me = makeMonster(this, 230, 740, S.parts, 0.55);
+    // devotion orbit
+    this.orbit = []; for (let i = 0; i < S.devotion; i++) this.orbit.push(this.add.image(230, 640, 'pHeart').setScale(0.9));
+    this.orbitT = 0;
+    // HUD graphics
+    this.hud = this.add.graphics().setDepth(20);
+    // end turn
+    this.endBtn = bigButton(this, 480, 690, C.bolt, (g) => { g.fillStyle(C.ink); g.fillTriangle(-14, -22, -14, 22, 20, 0); g.fillRect(20, -22, 8, 44); }, () => this.endTurn(), 40);
+    this.endBtn.setDepth(30);
+    this.deck = this.buildDeck(); this.discard = []; this.handCards = [];
+    this.handHint = ghostHand(this, 270, 860); this.handHint.setVisible(false);
+    this.time.delayedCall(400, () => { this.newIntent(); this.startTurn(); this.handHint.setVisible(S.round === 0); });
+  }
+  update() {
+    if (!this.orbit) return;
+    this.orbitT += 0.03;
+    this.orbit.forEach((h, i) => { const a = this.orbitT + i * (Math.PI * 2 / Math.max(1, this.orbit.length)); h.setPosition(this.me.x + Math.cos(a) * 90, 650 + Math.sin(a) * 24); h.setDepth(Math.sin(a) > 0 ? 15 : 5); });
+  }
+  buildDeck() {
+    const d = [{ kind: 'fang', pow: 1 }, { kind: 'fang', pow: 1 }];
+    SLOTS.forEach((s) => { const p = S.parts[s]; d.push({ kind: p.kind, pow: p.level, rarity: p.rarity }); });
+    if (S.devotion > 0) d.push({ kind: 'heart', pow: 1, rarity: 0 });
+    return Phaser.Utils.Array.Shuffle(d);
+  }
+  drawHUD() {
+    const g = this.hud; g.clear();
+    // rival hp
+    const rper = Math.min(this.R.hp, 12), rs = this.R.hp > 8 ? 30 : 40;
+    for (let i = 0; i < this.R.hp; i++) { const x = W / 2 - (this.R.hp - 1) * rs / 2 + i * rs; heartPath(g, x, 110, rs * 0.34, i < this.rhp ? C.red : 0x4a3a50); }
+    if (this.rblock) for (let i = 0; i < this.rblock; i++) drawIcon(g, 'shell', 400 + i * 30, 200, 13);
+    // player hp
+    for (let i = 0; i < this.pmax; i++) { const x = W / 2 - (this.pmax - 1) * 20 + i * 40; heartPath(g, x, 770, 13, i < this.php ? C.pink : 0x4a3a50); }
+    if (this.block) for (let i = 0; i < this.block; i++) drawIcon(g, 'shell', 380 + i * 32, 600, 14);
+    // energy
+    for (let i = 0; i < 3; i++) drawIcon(g, 'bolt', 40, 620 + i * 46, 18, i < this.energy ? C.bolt : 0x4a3a50);
+  }
+  newIntent() {
+    const R = this.R;
+    this.intent = Math.random() < 0.72 ? { kind: 'fang', n: Phaser.Math.Between(R.atk[0], R.atk[1]) } : { kind: 'shell', n: 2 };
+    if (this.intentC) this.intentC.destroy();
+    const g = this.add.graphics(); g.fillStyle(C.ink); g.fillRoundedRect(-60, -30, 120, 60, 20); g.fillStyle(C.white); g.fillRoundedRect(-54, -24, 108, 48, 16); g.fillTriangle(-10, 24, 10, 24, 0, 40);
+    for (let i = 0; i < this.intent.n; i++) drawIcon(g, this.intent.kind, (i - (this.intent.n - 1) / 2) * 24, 0, 11, this.intent.kind === 'fang' ? C.red : undefined);
+    this.intentC = this.add.container(300, 160, [g]).setDepth(25);
+    this.tweens.add({ targets: this.intentC, y: 168, yoyo: true, repeat: -1, duration: 400 });
+  }
+  startTurn() {
+    if (this.over) return;
+    this.energy = 3; this.block = 0;
+    for (let i = 0; i < 3; i++) { if (!this.deck.length) { this.deck = Phaser.Utils.Array.Shuffle(this.discard); this.discard = []; } if (this.deck.length) this.handCards.push(this.deck.pop()); }
+    this.layoutHand(); this.drawHUD();
+  }
+  layoutHand() {
+    if (this.handViews) this.handViews.forEach((v) => v.destroy());
+    this.handViews = this.handCards.map((card, i) => {
+      const x = 110 + i * 160, y = 880;
+      const c = this.add.container(x, y + 200).setDepth(30), g = this.add.graphics();
+      g.fillStyle(C.ink); g.fillRoundedRect(-66, -66, 132, 132, 18); g.fillStyle(RARITY[card.rarity || 0]); g.fillRoundedRect(-60, -60, 120, 120, 14);
+      g.fillStyle(card.kind === 'fang' ? 0x6a2a2a : card.kind === 'shell' ? 0x2a4a6a : 0x6a2a4a); g.fillRoundedRect(-52, -52, 104, 104, 10);
+      const pw = card.kind === 'heart' ? Math.max(1, S.devotion) : card.pow;
+      drawIcon(g, card.kind, 0, -8, 26);
+      for (let k = 0; k < pw; k++) { g.fillStyle(C.ink); g.fillCircle((k - (pw - 1) / 2) * 16, 38, 7); g.fillStyle(C.white); g.fillCircle((k - (pw - 1) / 2) * 16, 38, 5); }
+      drawIcon(g, 'bolt', 46, -46, 10);
+      c.add(g); c.setSize(132, 132).setInteractive({ useHandCursor: true });
+      this.tweens.add({ targets: c, y, duration: 300, delay: i * 80, ease: 'Back.Out' });
+      c.on('pointerdown', () => this.play(i, c));
+      return c;
+    });
+  }
+  play(i, view) {
+    if (this.over || this.energy <= 0 || this.busy) { if (this.energy <= 0) { this.tweens.add({ targets: this.endBtn, scale: 1.25, yoyo: true, duration: 120, repeat: 1 }); } return; }
+    this.handHint.setVisible(false);
+    const card = this.handCards[i]; if (!card) return;
+    this.busy = true; this.energy--; SFX.whoosh();
+    this.handCards.splice(i, 1); this.discard.push(card);
+    this.handViews.splice(i, 1);
+    const targetY = card.kind === 'shell' ? 650 : 330;
+    this.tweens.add({ targets: view, x: card.kind === 'shell' ? 230 : 300, y: targetY, scale: 0.5, angle: 20, duration: 260, ease: 'Cubic.In', onComplete: () => {
+      view.destroy();
+      if (card.kind === 'shell') { this.block += card.pow; SFX.block(); burst(this, 230, 650, 'pSpark', 10, 0x6fb6ff); }
+      else {
+        let dmg = card.kind === 'heart' ? Math.max(1, S.devotion) : card.pow;
+        if (card.kind === 'heart') { SFX.kiss(); if (S.devotion > 0) { S.devotion--; const h = this.orbit.pop(); if (h) { this.tweens.add({ targets: h, x: 300, y: 330, duration: 200, onComplete: () => h.destroy() }); } } burst(this, 300, 330, 'pHeart', 14); }
+        const absorbed = Math.min(this.rblock, dmg); this.rblock -= absorbed; dmg -= absorbed;
+        this.tweens.add({ targets: this.me, y: 700, yoyo: true, duration: 100 });
+        this.hit(this.rival, dmg); this.rhp = Math.max(0, this.rhp - dmg);
+      }
+      this.drawHUD(); this.layoutHandPositions(); this.busy = false;
+      if (this.rhp <= 0) this.win();
+      else if (this.energy <= 0 || !this.handCards.length) this.tweens.add({ targets: this.endBtn, scale: 1.2, yoyo: true, repeat: 3, duration: 150 });
+    } });
+  }
+  layoutHandPositions() { this.handViews.forEach((v, k) => { v.removeAllListeners('pointerdown'); v.on('pointerdown', () => this.play(k, v)); this.tweens.add({ targets: v, x: 110 + k * 160, duration: 150 }); }); }
+  hit(target, dmg) {
+    if (dmg <= 0) { SFX.block(); return; }
+    SFX.splat(); this.cameras.main.shake(120 + dmg * 60, 0.006 * dmg);
+    burst(this, target.x, target === this.rival ? 330 : 640, 'pGoo', 8 + dmg * 5);
+    this.tweens.add({ targets: target, alpha: 0.3, yoyo: true, duration: 60, repeat: 1 });
+    this.time.timeScale = 1;
+  }
+  endTurn() {
+    if (this.over || this.busy) return; this.busy = true;
+    this.discard.push(...this.handCards); this.handCards = []; if (this.handViews) this.handViews.forEach((v) => this.tweens.add({ targets: v, y: 1100, duration: 200, onComplete: () => v.destroy() })); this.handViews = [];
+    this.rblock = 0;
+    this.time.delayedCall(350, () => {
+      const it = this.intent;
+      if (it.kind === 'fang') {
+        this.tweens.add({ targets: this.rival, y: 560, duration: 160, yoyo: true, ease: 'Cubic.In' });
+        this.time.delayedCall(160, () => { let d = it.n; const ab = Math.min(this.block, d); d -= ab; this.php = Math.max(0, this.php - d); this.hit(this.me, d); this.drawHUD(); });
+      } else { this.rblock = it.n; SFX.block(); this.drawHUD(); }
+      this.time.delayedCall(700, () => {
+        this.busy = false;
+        if (this.php <= 0) return this.lose();
+        this.newIntent(); this.startTurn();
+      });
+    });
+  }
+  win() {
+    this.over = true; if (this.intentC) this.intentC.destroy(); SFX.win();
+    // rival falls apart
+    const parts = this.rival; this.tweens.add({ targets: parts, angle: 90, alpha: 0, y: 500, duration: 700, ease: 'Cubic.In' });
+    for (let i = 0; i < 4; i++) { const b = this.add.circle(300, 330, 26, this.R.col[i % 2]).setStrokeStyle(5, C.ink); this.tweens.add({ targets: b, x: 300 + Phaser.Math.Between(-220, 220), y: 520 + Phaser.Math.Between(-40, 60), angle: 360, duration: 800, ease: 'Bounce.Out' }); }
+    burst(this, 300, 330, 'pHeart', 24); burst(this, 300, 330, 'pBolt', 12);
+    const sci = drawScientist(this, 110, 960, 0.9); sci.y = 1250;
+    this.tweens.add({ targets: sci, y: 960, duration: 300, ease: 'Back.Out', onComplete: () => { SFX.cackle(); this.tweens.add({ targets: sci, angle: { from: -6, to: 6 }, yoyo: true, repeat: 6, duration: 90 }); } });
+    // harvest a legendary part from the loser
+    S.harvested = newPart(pick(SLOTS), 2); S.harvested.color = this.R.col[0];
+    this.time.delayedCall(2200, () => { S.round++; if (S.round >= 3) this.scene.start('Results', { win: true }); else this.scene.start('Dig'); });
+  }
+  lose() {
+    this.over = true; SFX.lose();
+    const head = this.add.circle(this.me.x, this.me.y + this.me.headY, 34, S.parts.head.color).setStrokeStyle(5, C.ink).setDepth(40);
+    this.tweens.add({ targets: head, x: 420, y: 800, angle: 540, duration: 1000, ease: 'Bounce.Out' });
+    this.time.delayedCall(2000, () => this.scene.start('Results', { win: false }));
+  }
+}
+
+class Results extends Phaser.Scene {
+  constructor() { super('Results'); }
+  create(data) {
+    background(this, data.win ? C.bolt : 0x4a3a50); autoButton(this);
+    const g = this.add.graphics();
+    if (data.win) {
+      g.fillStyle(0x6d5a48); g.fillTriangle(40, 820, 500, 820, 270, 560); g.fillStyle(C.ink); g.fillTriangle(60, 820, 480, 820, 270, 590);
+      g.fillStyle(0x8a7560); g.fillTriangle(80, 820, 460, 820, 270, 610);
+      const m = makeMonster(this, 230, 640, S.parts, 0.6); this.tweens.add({ targets: m, y: 620, yoyo: true, repeat: -1, duration: 300 });
+      const sci = drawScientist(this, 360, 660, 0.7); this.tweens.add({ targets: sci, angle: { from: -6, to: 6 }, yoyo: true, repeat: -1, duration: 120 });
+      // bowing rivals
+      RIVALS.forEach((r, i) => { const x = 90 + i * 180; const rp = { head: { slot: 'head', variant: i, color: r.col[0] }, torso: { slot: 'torso', variant: 1, color: r.col[1] }, arms: { slot: 'arms', variant: 0, color: r.col[0] }, legs: { slot: 'legs', variant: 1, color: r.col[1] } }; const rm = makeMonster(this, x, 930, rp, 0.3, 'sad'); rm.angle = i === 1 ? 0 : (i === 0 ? 20 : -20); this.tweens.add({ targets: rm, angle: rm.angle + 15, yoyo: true, repeat: -1, duration: 500 }); });
+      this.time.addEvent({ delay: 400, loop: true, callback: () => { burst(this, Phaser.Math.Between(60, 480), Phaser.Math.Between(150, 400), Math.random() < 0.5 ? 'pHeart' : 'pBolt', 14); } });
+      SFX.cackle(); this.time.delayedCall(700, () => SFX.cackle());
+      heartPath(g, W / 2, 230, 50, C.pink); drawIcon(g, 'bolt', W / 2 + 40, 210, 34);
+    } else {
+      const head = makeMonster(this, W / 2, 760, { ...S.parts, legs: { ...S.parts.legs, color: 0x00000000 } }, 0.5, 'sad');
+      head.setVisible(false);
+      g.fillStyle(C.ink); g.fillCircle(W / 2, 700, 64); g.fillStyle(S.parts.head.color); g.fillCircle(W / 2, 700, 58); face(g, W / 2, 700, 56, 'sad');
+      g.fillStyle(C.ground2); g.fillEllipse(W / 2, 760, 220, 40);
+      const hg = this.add.graphics(); heartPath(hg, 0, 0, 40, C.pink); const hc = this.add.container(W / 2, 380, [hg]);
+      this.tweens.add({ targets: hc, scale: 0.4, alpha: 0.4, duration: 2200, ease: 'Cubic.In' });
+    }
+    const replay = bigButton(this, W / 2, data.win ? 470 : 560, C.green, (rg) => { rg.lineStyle(10, C.ink); rg.beginPath(); rg.arc(0, 0, 22, -2.6, 2.2); rg.strokePath(); rg.fillStyle(C.ink); rg.fillTriangle(-26, -30, -4, -18, -26, -4); }, () => { resetRun(); this.scene.start('Dig'); }, 50);
+    replay.setScale(0); this.tweens.add({ targets: replay, scale: 1, duration: 500, delay: 1200, ease: 'Back.Out' });
+    this.replay = replay;
+  }
+}
+
+window.game = new Phaser.Game({
+  type: Phaser.AUTO, parent: 'game', backgroundColor: '#2b1f3a',
+  scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH, width: W, height: H },
+  scene: [Boot, Title, Dig, DateScene, Battle, Results],
+});
+</script>
+</body>
+</html>
