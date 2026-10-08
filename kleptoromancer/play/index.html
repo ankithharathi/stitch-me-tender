@@ -162,6 +162,97 @@ function teethIcon(g, x, y, s) {
   g.fillStyle(N.ink); g.fillEllipse(x, y, s * 2.3, s * 1.5); g.fillStyle(0x8a1030); g.fillEllipse(x, y, s * 2.0, s * 1.2);
   g.fillStyle(N.white); for (let i = -2; i <= 2; i++) { g.fillTriangle(x + i * s * 0.36 - s * 0.17, y - s * 0.55, x + i * s * 0.36 + s * 0.17, y - s * 0.55, x + i * s * 0.36, y - s * 0.12); g.fillTriangle(x + i * s * 0.36 - s * 0.17, y + s * 0.55, x + i * s * 0.36 + s * 0.17, y + s * 0.55, x + i * s * 0.36, y + s * 0.12); }
 }
+
+// ---------------- painted UI layer ----------------
+// Painted UI sprites live in assets/sprites/ui_<name>.png. Every helper below returns null (or takes the vector
+// path) when a file is missing, so the game looks exactly like the vector build until the art lands.
+const UI_NAMES = ['sym_moon', 'sym_bone', 'sym_flame', 'sym_drop', 'sym_star', 'sym_eye', 'sym_wild', 'sym_ice', 'flame_ghost',
+  'hat', 'lips', 'fang', 'tent', 'token', 'hand', 'robot', 'sound', 'mute',
+  'btn_smooch', 'btn_end', 'btn_next', 'btn_replay', 'bubble', 'card_back',
+  'frame_common', 'frame_rare', 'frame_legendary',
+  'meter', 'jar', 'capsule_common', 'capsule_rare', 'capsule_legendary', 'fx_tear', 'heart', 'heart_empty', 'fx_spark'];
+const UI_ART = UI_NAMES.map((n) => 'ui_' + n);
+const HASUI = (name) => HAS('ui_' + name);
+const RARN = ['common', 'rare', 'legendary'];
+// Layout of the painted UI in world px (540x960 world). These are the knobs to tune once the real art lands.
+const UI_LAYOUT = {
+  hand: { w: 62, h: 78, ox: 0.5, oy: 1, tipY: -6 }, // hint hand box; painted hand points down, (ox, oy) is the fingertip, placed at tipY
+  topIcon: 42, topDisc: 0.35,                       // robot / speaker icon box; alpha of the dark disc kept behind them
+  tent: 40,                                         // round progress tents
+  hat: 30, hatY: 42, pillAlpha: 0.55,               // health hats inside the pill, pill fill alpha
+  lips: [48, 36],                                   // energy lips box (w, h)
+  devHeart: 15, devHeartY: 584,                     // entourage devotion hearts
+  deck: [34, 46], deckXY: [512, 636], deckStep: [1.5, -4], // deck pile card backs, base position, per-card offset
+  badgeSym: 22,                                     // marker sprites on the monster belly badge
+  card: { w: 112, h: 152, sym: 58, symY: -16, ice: 62, pip: 24, pipY: 40, pipGap: 27, spark: 16 },
+  // love-tester tube: art spans [top - padTop, bottom + padBot]; the top capFrac of the image (skull cap) keeps its aspect,
+  // the rest stretches. Segment fills are fillW wide at x + fillDX; slotAlpha is the empty-segment shade drawn on the glass.
+  meter: { w: 38, padTop: 10, padBot: 8, capFrac: 0.16, fillW: 14, fillDX: 0, slotAlpha: 0.45, zoneAlpha: 0.6, heartDX: 25, heart: 11 },
+  bubble: { padX: 16, h: 46, dy: -2, icon: 20, iconDY: -3, gap: 22 }, // intent bubble (stretched to 30 + n*20 + padX wide)
+  btnPad: 6,                                        // painted round buttons fill a (2r + 2*btnPad) box
+  jar: { x: 70, y: 655, w: 100, h: 150, coin: 21, coinBot: 24, coinStep: [20, 22] }, // booth token jar; coin rows start coinBot above the jar's bottom edge
+  capsule: 72, ghostFlame: 34,
+  moodHearts: [24, 18, 13], sweat: [14, 20],        // smitten hearts and nervous sweat on painted monsters
+  logo: { lips: [112, 80], heart: 104, teeth: [116, 84] }, // title neon sign
+};
+// Painted stand-ins for the generated particle textures: [ui name, world px at scale 1], matching the vector texture at 1/RES.
+const PART_ART = { pHeart: ['heart', 24], pSpark: ['fx_spark', 16], pTear: ['fx_tear', 18], pFlame: ['sym_flame', 20], pIce: ['sym_ice', 24], pCoin: ['token', 24], pHat: ['hat', 32] };
+const UI_DIM = 0x555566;
+
+// Fit an image inside a w x h world box, aspect kept (painted sources have arbitrary pixel sizes).
+function fitImg(im, w, h = w) { im.setScale(Math.min(w / im.width, h / im.height)); return im; }
+// A painted UI sprite fitted in a w x h box, or null when ui_<name> is missing.
+// opts: origin [x, y], tint, alpha, depth, parent (Container to add it to)
+function uiImg(scene, name, x, y, w, h = w, opts = {}) {
+  if (!HASUI(name)) return null;
+  const im = fitImg(scene.add.image(x, y, 'ui_' + name), w, h);
+  if (opts.origin) im.setOrigin(opts.origin[0], opts.origin[1]);
+  if (opts.tint !== undefined) im.setTint(opts.tint);
+  if (opts.alpha !== undefined) im.setAlpha(opts.alpha);
+  if (opts.depth !== undefined) im.setDepth(opts.depth);
+  if (opts.parent) opts.parent.add(im);
+  return im;
+}
+// Painted marker symbol (moon, bone, flame, drop, star, eye, wild, ice) in a box x box square.
+function symImg(scene, sym, x, y, box, opts) { return uiImg(scene, 'sym_' + sym, x, y, box, box, opts); }
+// Dim / spent / lost state as tint + alpha (the vector build used a dark colour).
+function uiDim(im, on, alpha = 0.5, tint = UI_DIM) { if (!im) return im; if (on) im.setTint(tint).setAlpha(alpha); else im.clearTint().setAlpha(1); return im; }
+// Soft glow and greyscale on a painted sprite. WebGL only: Canvas has no preFX, so these quietly do nothing there.
+function uiGlow(im, color, strength = 3) { if (!im || !im.preFX) return null; try { im.preFX.setPadding(14); return im.preFX.addGlow(color, strength, 0, false, 0.1, 12) || null; } catch (e) { return null; } }
+function uiUnglow(im, fx) { if (im && im.preFX && fx) { try { im.preFX.remove(fx); } catch (e) {} } }
+function uiGrey(im, alpha = 0.75) {
+  if (!im) return im; im.setAlpha(alpha);
+  let ok = false; if (im.preFX) { try { const cm = im.preFX.addColorMatrix(); if (cm) { cm.grayscale(1); ok = true; } } catch (e) {} }
+  if (!ok) im.setTint(0x9a9aaa);
+  return im;
+}
+// Particle-sized image (pHat, pCoin...): the painted version at the vector texture's world size times mul, else the vector texture.
+function pImage(scene, x, y, pkey, mul = 1) {
+  const pa = PART_ART[pkey];
+  if (pa && HASUI(pa[0])) { const im = scene.add.image(x, y, 'ui_' + pa[0]); return im.setScale(mul * pa[1] / Math.max(im.width, im.height)); }
+  return scene.add.image(x, y, pkey).setScale(mul / RES);
+}
+// Teeth for the neon sign: the painted 'maw' sprite once the painted UI set is in, else null (vector teethIcon).
+function teethArt(scene, x, y, w, h) { return HASUI('lips') && HAS('maw') ? fitImg(scene.add.image(x, y, 'maw'), w, h) : null; }
+// Love-tester tube behind the segment fills: a Container (depth 19) holding the tube and the zone hearts, or null.
+function meterArt(scene, m) {
+  if (!HASUI('meter')) return null;
+  const ML = UI_LAYOUT.meter, h = m.segH, b = m.mBottom, top = b - (m.zoneMax + 1) * h;
+  const y0 = top - ML.padTop, y1 = b + ML.padBot, tall = y1 - y0;
+  const c = scene.add.container(m.mx, 0).setDepth(19);
+  const cap = scene.add.image(0, y0, 'ui_meter').setOrigin(0.5, 0), fw = cap.width, fh = cap.height, s = ML.w / fw;
+  const capPx = Math.round(fh * ML.capFrac);
+  if (capPx > 0 && capPx < fh && capPx * s < tall * 0.6) {
+    // skull cap at true aspect, the rest of the tube stretched to the meter height
+    cap.setScale(s).setCrop(0, 0, fw, capPx);
+    const body = scene.add.image(0, y1, 'ui_meter').setOrigin(0.5, 1).setCrop(0, capPx, fw, fh - capPx);
+    body.setScale(s, (tall - capPx * s + 1) / (fh - capPx));
+    c.add([body, cap]); c.tube = [body, cap];
+  } else { cap.setDisplaySize(ML.w, tall); c.add(cap); c.tube = [cap]; }
+  c.hearts = [];
+  for (let z = m.zoneMin; z <= m.zoneMax; z++) { const hi = uiImg(scene, 'heart', -ML.heartDX, b - z * h + h / 2 - 2, ML.heart, ML.heart, { parent: c }); if (hi) c.hearts.push({ z, im: hi }); }
+  return c;
+}
 // procedural mutant: container origin at feet
 function makeMonster(scene, x, y, look, scale = 1) {
   if (!look.sprite || !HAS(look.sprite)) return makeMonsterVec(scene, x, y, look, scale);
@@ -170,15 +261,25 @@ function makeMonster(scene, x, y, look, scale = 1) {
   const bw = im.displayWidth;
   const badge = scene.add.graphics(); const by = -H0 * 0.34;
   badge.fillStyle(N.ink, 0.92); badge.fillRoundedRect(-33, by - 15, 66, 30, 12); glowRect(badge, -33, by - 15, 66, 30, 12, N.cyan, 1.2);
-  drawSym(badge, look.markers[0], -15, by, 9, N.ink); drawSym(badge, look.markers[1], 15, by, 9, N.ink);
+  const marks = look.markers.map((mk, k) => symImg(scene, mk, k ? 15 : -15, by, UI_LAYOUT.badgeSym));
+  marks.forEach((mi, k) => { if (!mi) drawSym(badge, look.markers[k], k ? 15 : -15, by, 9, N.ink); });
   const fx = scene.add.graphics();
   let maw = null; if (HAS('maw')) { maw = scene.add.image(0, -H0 * 0.5, 'maw'); maw.setScale((bw * 0.95) / maw.width).setVisible(false); }
-  c.add([im, badge, fx]); if (maw) c.add(maw);
+  c.add([im, badge, fx]); marks.forEach((mi) => mi && c.add(mi));
+  // painted mood stickers (made once, shown per mood): smitten hearts and nervous sweat drops
+  const MH = UI_LAYOUT.moodHearts, SW = UI_LAYOUT.sweat;
+  const hearts = HASUI('heart') ? [[-bw * 0.32, -H0 - 6, 11, MH[0], 1], [bw * 0.3, -H0 - 18, 8, MH[1], 1], [0, -H0 - 26, 6, MH[2], 0.8]]
+    .map(([hx, hy, hs, box, a]) => uiImg(scene, 'heart', hx, hy + hs * 0.17, box, box, { alpha: a, parent: c }).setVisible(false)) : null;
+  const drops = HASUI('fx_tear') ? [[bw * 0.42, -H0 * 0.8], [-bw * 0.4, -H0 * 0.72]]
+    .map(([sx, sy]) => uiImg(scene, 'fx_tear', sx, sy - 4, SW[0], SW[1], { parent: c }).setVisible(false)) : null;
+  if (maw) c.add(maw);
   c.look = look; c.mood = 'normal'; c.badgeY = by;
   c.redraw = (mood) => {
     c.mood = mood; im.clearTint(); fx.clear(); if (maw) maw.setVisible(false);
-    if (mood === 'smitten') { im.setTint(0xffe0ec); heart(fx, -bw * 0.32, -H0 - 6, 11, N.pink); heart(fx, bw * 0.3, -H0 - 18, 8, N.pink); heart(fx, 0, -H0 - 26, 6, N.pink, 0.8); }
-    else if (mood === 'nervous') { fx.fillStyle(N.cyan, 0.95); [[bw * 0.42, -H0 * 0.8], [-bw * 0.4, -H0 * 0.72]].forEach(([sx, sy]) => { fx.fillCircle(sx, sy, 6); fx.fillTriangle(sx - 6, sy, sx + 6, sy, sx, sy - 14); }); }
+    if (hearts) hearts.forEach((o) => o.setVisible(mood === 'smitten'));
+    if (drops) drops.forEach((o) => o.setVisible(mood === 'nervous'));
+    if (mood === 'smitten') { im.setTint(0xffe0ec); if (!hearts) { heart(fx, -bw * 0.32, -H0 - 6, 11, N.pink); heart(fx, bw * 0.3, -H0 - 18, 8, N.pink); heart(fx, 0, -H0 - 26, 6, N.pink, 0.8); } }
+    else if (mood === 'nervous') { if (!drops) { fx.fillStyle(N.cyan, 0.95); [[bw * 0.42, -H0 * 0.8], [-bw * 0.4, -H0 * 0.72]].forEach(([sx, sy]) => { fx.fillCircle(sx, sy, 6); fx.fillTriangle(sx - 6, sy, sx + 6, sy, sx, sy - 14); }); } }
     else if (mood === 'chomp') { im.setTint(0xff9a9a); if (maw) maw.setVisible(true); else { teethIcon(fx, 0, -H0 * 0.5, 30); } }
   };
   c.setScale(scale * look.size);
@@ -187,13 +288,16 @@ function makeMonster(scene, x, y, look, scale = 1) {
 }
 function makeMonsterVec(scene, x, y, look, scale = 1) {
   const c = scene.add.container(x, y), g = scene.add.graphics(); c.add(g);
+  // painted belly markers (both or neither, so the badge never mixes styles)
+  let marks = look.markers.map((mk, k) => symImg(scene, mk, k ? 14 : -14, -31, 18));
+  if (!(marks[0] && marks[1])) { marks.forEach((mi) => mi && mi.destroy()); marks = null; } else c.add(marks);
   c.look = look; c.mood = 'normal';
-  c.redraw = (mood) => { c.mood = mood; g.clear(); drawMonsterG(g, look, mood); };
+  c.redraw = (mood) => { c.mood = mood; g.clear(); drawMonsterG(g, look, mood, !!marks); };
   c.redraw('normal'); c.setScale(scale * look.size);
   c.topY = -(130) * scale * look.size;
   return c;
 }
-function drawMonsterG(g, L, mood) {
+function drawMonsterG(g, L, mood, paintedMarks = false) {
   const bw = 96 * L.wide, bh = 86, by = -50;
   // feet
   g.fillStyle(N.ink); g.fillEllipse(-24, -6, 40, 20); g.fillEllipse(24, -6, 40, 20);
@@ -209,7 +313,7 @@ function drawMonsterG(g, L, mood) {
   // belly with genetic markers
   g.fillStyle(0xffffff, 0.35); g.fillEllipse(0, by + 18, bw * 0.62, bh * 0.42);
   g.fillStyle(N.plum2, 0.85); g.fillRoundedRect(-30, by + 6, 60, 26, 10);
-  drawSym(g, L.markers[0], -14, by + 19, 8, N.plum2); drawSym(g, L.markers[1], 14, by + 19, 8, N.plum2);
+  if (!paintedMarks) { drawSym(g, L.markers[0], -14, by + 19, 8, N.plum2); drawSym(g, L.markers[1], 14, by + 19, 8, N.plum2); }
   // eyes
   const ey = by - bh * 0.22, n = L.eyes;
   for (let i = 0; i < n; i++) {
@@ -319,18 +423,39 @@ function background(scene, mode = 'fair', key) {
 }
 function topBar(scene, showHats = true) {
   autoButton(scene);
-  const g = scene.add.graphics().setDepth(50);
-  for (let i = 0; i < 3; i++) { const x = W / 2 - 46 + i * 46, y = 40; const col = i < S.round ? N.dim : i === S.round ? N.gold : 0x7a6a8a; g.fillStyle(N.ink); g.fillTriangle(x - 18, y + 14, x + 18, y + 14, x, y - 18); g.fillStyle(col); g.fillTriangle(x - 13, y + 11, x + 13, y + 11, x, y - 12); g.fillStyle(N.ink); g.fillRect(x - 2, y - 22, 4, 6); }
-  if (S.round < 3) { const r = scene.add.circle(W / 2 - 46 + S.round * 46, 40, 24).setStrokeStyle(3, N.gold).setDepth(50); scene.tweens.add({ targets: r, scale: 1.15, alpha: 0.5, yoyo: true, repeat: -1, duration: 500 }); }
-  const mg = scene.add.graphics().setDepth(50);
-  const drawM = () => { mg.clear(); mg.fillStyle(N.ink, 0.7); mg.fillCircle(W - 36, 40, 24); mg.fillStyle(N.white); mg.fillRect(W - 48, 33, 8, 14); mg.fillTriangle(W - 42, 40, W - 30, 28, W - 30, 52); if (S.muted) { mg.lineStyle(4, N.red); mg.lineBetween(W - 54, 24, W - 18, 56); } else { mg.lineStyle(3, N.white); mg.beginPath(); mg.arc(W - 26, 40, 8, -0.8, 0.8); mg.strokePath(); } };
+  const g = scene.add.graphics().setDepth(50), tentArt = HASUI('tent'), T = UI_LAYOUT.tent;
+  for (let i = 0; i < 3; i++) {
+    const x = W / 2 - 46 + i * 46, y = 40;
+    if (tentArt) {
+      // painted tents: done = dim, current = pulse + glow, upcoming = grey
+      const im = uiImg(scene, 'tent', x, y, T, T, { depth: 50 });
+      if (i < S.round) uiDim(im, true, 0.5);
+      else if (i > S.round) uiGrey(im, 0.75);
+      else { uiGlow(im, N.gold, 3); scene.tweens.add({ targets: im, scale: im.scale * 1.15, yoyo: true, repeat: -1, duration: 500, ease: 'Sine.InOut' }); }
+      continue;
+    }
+    const col = i < S.round ? N.dim : i === S.round ? N.gold : 0x7a6a8a; g.fillStyle(N.ink); g.fillTriangle(x - 18, y + 14, x + 18, y + 14, x, y - 18); g.fillStyle(col); g.fillTriangle(x - 13, y + 11, x + 13, y + 11, x, y - 12); g.fillStyle(N.ink); g.fillRect(x - 2, y - 22, 4, 6);
+  }
+  if (S.round < 3 && !tentArt) { const r = scene.add.circle(W / 2 - 46 + S.round * 46, 40, 24).setStrokeStyle(3, N.gold).setDepth(50); scene.tweens.add({ targets: r, scale: 1.15, alpha: 0.5, yoyo: true, repeat: -1, duration: 500 }); }
+  const mg = scene.add.graphics().setDepth(50), TI = UI_LAYOUT.topIcon;
+  const snd = uiImg(scene, 'sound', W - 36, 40, TI, TI, { depth: 50 }), mut = snd && uiImg(scene, 'mute', W - 36, 40, TI, TI, { depth: 50 });
+  const drawM = () => {
+    mg.clear();
+    if (snd) { mg.fillStyle(N.ink, UI_LAYOUT.topDisc); mg.fillCircle(W - 36, 40, 24); snd.setVisible(!S.muted || !mut); uiDim(snd, S.muted && !mut, 0.45); if (mut) mut.setVisible(S.muted); return; }
+    mg.fillStyle(N.ink, 0.7); mg.fillCircle(W - 36, 40, 24); mg.fillStyle(N.white); mg.fillRect(W - 48, 33, 8, 14); mg.fillTriangle(W - 42, 40, W - 30, 28, W - 30, 52); if (S.muted) { mg.lineStyle(4, N.red); mg.lineBetween(W - 54, 24, W - 18, 56); } else { mg.lineStyle(3, N.white); mg.beginPath(); mg.arc(W - 26, 40, 8, -0.8, 0.8); mg.strokePath(); }
+  };
   drawM(); scene.add.zone(W - 36, 40, 64, 64).setInteractive().setDepth(51).on('pointerdown', () => { S.muted = !S.muted; drawM(); });
   return g;
 }
 function ghostHand(scene, x, y) {
-  const g = scene.add.graphics();
-  g.fillStyle(N.white, 0.9); g.fillRoundedRect(-10, -6, 20, 46, 10); g.fillRoundedRect(-24, 22, 48, 40, 14); g.fillCircle(-18, 26, 9);
-  g.lineStyle(3, N.ink, 0.8); g.strokeRoundedRect(-10, -6, 20, 46, 10); g.strokeRoundedRect(-24, 22, 48, 40, 14);
+  // vector hand points up with its fingertip at (0, -6); the painted hand points down, fingertip on the same spot
+  const HL = UI_LAYOUT.hand, im = uiImg(scene, 'hand', 0, HL.tipY, HL.w, HL.h, { origin: [HL.ox, HL.oy], alpha: 0.95 });
+  let g = im;
+  if (!im) {
+    g = scene.add.graphics();
+    g.fillStyle(N.white, 0.9); g.fillRoundedRect(-10, -6, 20, 46, 10); g.fillRoundedRect(-24, 22, 48, 40, 14); g.fillCircle(-18, 26, 9);
+    g.lineStyle(3, N.ink, 0.8); g.strokeRoundedRect(-10, -6, 20, 46, 10); g.strokeRoundedRect(-24, 22, 48, 40, 14);
+  }
   const c = scene.add.container(x, y, [g]).setDepth(200);
   let tw = null;
   c.move = (nx, ny) => { if (tw) tw.stop(); c.setPosition(nx, ny); c.setScale(1); c.setVisible(true); tw = scene.tweens.add({ targets: c, y: ny + 16, scale: 0.9, yoyo: true, repeat: -1, duration: 420, ease: 'Sine.InOut' }); };
@@ -339,36 +464,66 @@ function ghostHand(scene, x, y) {
   return c;
 }
 function burst(scene, x, y, key, n = 12, tint, opts = {}) {
-  const p = scene.add.particles(x, y, key, Object.assign({ speed: { min: 120, max: 360 }, angle: { min: 0, max: 360 }, scale: { start: 1 / RES, end: 0 }, lifespan: 800, gravityY: 300, emitting: false, tint }, opts));
+  // painted particle when its ui_* sprite exists, scaled to the same world size as the generated vector texture
+  const pa = PART_ART[key], pk = pa && HASUI(pa[0]) ? 'ui_' + pa[0] : null;
+  let s0 = 1 / RES;
+  if (pk) { const f = scene.textures.getFrame(pk); s0 = pa[1] / Math.max(f.width, f.height); }
+  const p = scene.add.particles(x, y, pk || key, Object.assign({ speed: { min: 120, max: 360 }, angle: { min: 0, max: 360 }, scale: { start: s0, end: 0 }, lifespan: 800, gravityY: 300, emitting: false, tint }, opts));
   p.setDepth(150); p.explode(n); scene.time.delayedCall(1500, () => p.destroy());
 }
-function iconButton(scene, x, y, r, color, drawFn, onTap) {
-  const c = scene.add.container(x, y), g = scene.add.graphics();
-  g.fillStyle(N.ink); g.fillCircle(0, 5, r + 5); g.fillStyle(color); g.fillCircle(0, 0, r); g.fillStyle(N.white, 0.25); g.fillEllipse(-r * 0.3, -r * 0.42, r * 0.8, r * 0.38);
-  glowCircle(g, 0, 0, r + 2, color, 2);
-  const ig = scene.add.graphics(); drawFn(ig); c.add([g, ig]);
+// Round button. art = optional ui_* name (e.g. 'btn_end'): the painted button replaces the vector disc + glyph.
+function iconButton(scene, x, y, r, color, drawFn, onTap, art) {
+  const c = scene.add.container(x, y), im = art ? uiImg(scene, art, 0, 0, 2 * (r + UI_LAYOUT.btnPad)) : null;
+  if (im) c.add(im);
+  else {
+    const g = scene.add.graphics();
+    g.fillStyle(N.ink); g.fillCircle(0, 5, r + 5); g.fillStyle(color); g.fillCircle(0, 0, r); g.fillStyle(N.white, 0.25); g.fillEllipse(-r * 0.3, -r * 0.42, r * 0.8, r * 0.38);
+    glowCircle(g, 0, 0, r + 2, color, 2);
+    const ig = scene.add.graphics(); drawFn(ig); c.add([g, ig]);
+  }
   c.setSize(r * 2.2, r * 2.2).setInteractive({ useHandCursor: true });
   c.on('pointerdown', () => { scene.tweens.add({ targets: c, scale: 0.85, yoyo: true, duration: 80 }); onTap(); });
   return c;
 }
 function cardView(scene, card, x, y, scale = 1) {
-  const c = scene.add.container(x, y), g = scene.add.graphics();
-  g.fillStyle(N.ink); g.fillRoundedRect(-56, -76, 112, 152, 16);
-  g.fillStyle(RAR[card.rarity]); g.fillRoundedRect(-51, -71, 102, 142, 13);
-  g.fillStyle(N.plum2); g.fillRoundedRect(-45, -65, 90, 130, 10);
-  glowRect(g, -45, -65, 90, 130, 10, RAR[card.rarity], 1.5);
-  c.add(g);
-  const sg = scene.add.graphics(); c.add(sg);
-  if (card.sym === 'ice') {
-    drawSym(sg, 'ice', 0, -18, 26);
-    sg.fillStyle(N.ice); [0, 1].forEach((k) => sg.fillTriangle(-30 + k * 30 + 6, 32, 6 + k * 30 + 6, 32, -12 + k * 30 + 6, 50));
-  } else {
-    sg.fillStyle(SYMCOL[card.sym], 0.12); sg.fillCircle(0, -20, 34);
-    drawSym(sg, card.sym, 0, -20, 24);
-    const tot = card.solid + card.ghost;
-    for (let i = 0; i < tot; i++) flamePip(sg, (i - (tot - 1) / 2) * 29, 42, 13, i >= card.solid);
+  const c = scene.add.container(x, y), CL = UI_LAYOUT.card, tw = [];
+  // body: painted rarity frame, else the vector card
+  const frame = uiImg(scene, 'frame_' + RARN[card.rarity], 0, 0, CL.w, CL.h);
+  if (frame) c.add(frame);
+  else {
+    const g = scene.add.graphics();
+    g.fillStyle(N.ink); g.fillRoundedRect(-56, -76, 112, 152, 16);
+    g.fillStyle(RAR[card.rarity]); g.fillRoundedRect(-51, -71, 102, 142, 13);
+    g.fillStyle(N.plum2); g.fillRoundedRect(-45, -65, 90, 130, 10);
+    glowRect(g, -45, -65, 90, 130, 10, RAR[card.rarity], 1.5);
+    c.add(g);
   }
-  if (card.rarity === 2) { const sp = scene.add.circle(36, -56, 5, N.white); c.add(sp); scene.tweens.add({ targets: sp, scale: 0.2, yoyo: true, repeat: -1, duration: 300 }); }
+  const sg = scene.add.graphics(); c.add(sg); // vector glyphs for anything without painted art
+  if (card.sym === 'ice') {
+    const big = symImg(scene, 'ice', 0, CL.symY, CL.ice);
+    if (big) { c.add(big); [-1, 1].forEach((d) => c.add(symImg(scene, 'ice', d * CL.pipGap / 2, CL.pipY, CL.pip))); }
+    else {
+      drawSym(sg, 'ice', 0, -18, 26);
+      sg.fillStyle(N.ice); [0, 1].forEach((k) => sg.fillTriangle(-30 + k * 30 + 6, 32, 6 + k * 30 + 6, 32, -12 + k * 30 + 6, 50));
+    }
+  } else {
+    const big = symImg(scene, card.sym, 0, CL.symY, CL.sym);
+    if (big) c.add(big);
+    else { sg.fillStyle(SYMCOL[card.sym], 0.12); sg.fillCircle(0, -20, 34); drawSym(sg, card.sym, 0, -20, 24); }
+    const tot = card.solid + card.ghost, painted = HASUI('sym_flame') && HASUI('flame_ghost'), ghosts = [];
+    for (let i = 0; i < tot; i++) {
+      const ghost = i >= card.solid;
+      if (painted) { const pi = uiImg(scene, ghost ? 'flame_ghost' : 'sym_flame', (i - (tot - 1) / 2) * CL.pipGap, CL.pipY, CL.pip, CL.pip, { parent: c }); if (ghost) ghosts.push(pi); }
+      else flamePip(sg, (i - (tot - 1) / 2) * 29, 42, 13, ghost);
+    }
+    // ghost flames flicker: they only count half the time
+    if (ghosts.length) { tw.push(...ghosts); scene.tweens.add({ targets: ghosts, alpha: 0.4, yoyo: true, repeat: -1, duration: 240, ease: 'Sine.InOut' }); }
+  }
+  if (card.rarity === 2) {
+    const sp = uiImg(scene, 'fx_spark', 36, -56, CL.spark) || scene.add.circle(36, -56, 5, N.white); c.add(sp); tw.push(sp);
+    scene.tweens.add({ targets: sp, scale: sp.scale * 0.2, yoyo: true, repeat: -1, duration: 300 });
+  }
+  if (tw.length) c.once('destroy', () => scene.tweens.killTweensOf(tw));
   c.setSize(112, 152); c.setScale(scale);
   return c;
 }
@@ -377,8 +532,19 @@ function cardView(scene, card, x, y, scale = 1) {
 // ---------------- autoplay (robot toggle, top-right next to mute) ----------------
 function autoButton(scene) {
   const g = scene.add.graphics().setDepth(300), x = W - 96, y = 40;
+  // painted robot: on = full colour + lime glow + pulse, off = dimmed (depth 300 so captures hide it like the vector one)
+  const im = uiImg(scene, 'robot', x, y, UI_LAYOUT.topIcon, UI_LAYOUT.topIcon, { depth: 300 }), base = im ? im.scale : 1;
+  let glow = null, pulse = null;
   const draw = () => {
-    g.clear(); g.fillStyle(N.ink, 0.7); g.fillCircle(x, y, 24);
+    g.clear();
+    if (im) {
+      g.fillStyle(N.ink, UI_LAYOUT.topDisc); g.fillCircle(x, y, 24);
+      uiUnglow(im, glow); glow = null; if (pulse) { pulse.stop(); pulse = null; } im.setScale(base);
+      if (S.auto) { im.clearTint().setAlpha(1); glow = uiGlow(im, N.lime, 3); pulse = scene.tweens.add({ targets: im, scale: base * 1.1, yoyo: true, repeat: -1, duration: 420, ease: 'Sine.InOut' }); }
+      else im.setTint(0x9a9aae).setAlpha(0.6);
+      return;
+    }
+    g.fillStyle(N.ink, 0.7); g.fillCircle(x, y, 24);
     if (S.auto) glowCircle(g, x, y, 26, N.lime, 2);
     const col = S.auto ? N.lime : N.white;
     g.lineStyle(3, col); g.lineBetween(x, y - 12, x, y - 18); g.fillStyle(col); g.fillCircle(x, y - 19, 3); g.fillRoundedRect(x - 13, y - 11, 26, 22, 6);
@@ -439,7 +605,7 @@ class Boot extends Phaser.Scene {
     this.cameras.main.setZoom(RES).centerOn(W / 2, H / 2);
     this.load.on('progress', (v) => { g.clear(); heart(g, W / 2, H / 2, 60, N.dim); heart(g, W / 2, H / 2 + 8 * (1 - v), 60 * Math.max(0.12, v), N.pink); });
     this.load.on('loaderror', (f) => console.warn('art missing, using vector fallback:', f.key));
-    ART.forEach((k) => this.load.image(k, k.startsWith('bg_') ? 'assets/bg/' + k + '.jpg' : 'assets/sprites/' + k + '.png'));
+    [...ART, ...UI_ART].forEach((k) => this.load.image(k, k.startsWith('bg_') ? 'assets/bg/' + k + '.jpg' : 'assets/sprites/' + k + '.png'));
   }
   create() {
     this.children.removeAll(true);
@@ -464,12 +630,21 @@ class Title extends Phaser.Scene {
     const look = newLook(1); const m = makeMonster(this, 150, 780, look, 1); m.redraw('smitten');
     this.tweens.add({ targets: m, scaleY: m.scaleY * 0.93, yoyo: true, repeat: -1, duration: 500 });
     // neon sign logo: lips | heart | teeth
-    const lg = this.add.graphics();
+    const lg = this.add.graphics(), LL = UI_LAYOUT.logo;
     if (!bgT.painted) { lg.fillStyle(N.ink, 0.85); lg.fillRoundedRect(-230, -90, 460, 180, 30); glowRect(lg, -230, -90, 460, 180, 30, N.cyan, 4); }
-    lipsIcon(lg, -130, 0, 46); teethIcon(lg, 130, 0, 46); heart(lg, 0, -8, 46, N.pink);
-    glowCircle(lg, 0, 0, 62, N.pink, 3);
-    const logo = this.add.container(W / 2, bgT.painted ? 122 : 230, [lg]).setAlpha(0);
-    if (bgT.painted) lg.setScale(0.7);
+    // painted sign: ui_lips | ui_heart | maw (the art container sits above the vector panel)
+    const art = HASUI('lips') && HASUI('heart') ? this.add.container(0, 0) : null;
+    if (art) {
+      uiImg(this, 'lips', -130, 0, LL.lips[0], LL.lips[1], { parent: art });
+      uiGlow(uiImg(this, 'heart', 0, -4, LL.heart, LL.heart, { parent: art }), N.pink, 2);
+      const teeth = teethArt(this, 130, 0, LL.teeth[0], LL.teeth[1]); if (teeth) art.add(teeth); else teethIcon(lg, 130, 0, 46);
+    } else {
+      lipsIcon(lg, -130, 0, 46); teethIcon(lg, 130, 0, 46); heart(lg, 0, -8, 46, N.pink);
+      glowCircle(lg, 0, 0, 62, N.pink, 3);
+    }
+    const logo = this.add.container(W / 2, bgT.painted ? 122 : 230, art ? [lg, art] : [lg]).setAlpha(0);
+    logo.isLogo = true;
+    if (bgT.painted) { lg.setScale(0.7); if (art) art.setScale(0.7); }
     // flicker on
     this.tweens.add({ targets: logo, alpha: { from: 0, to: 1 }, duration: 70, yoyo: true, repeat: 3, onComplete: () => { logo.setAlpha(1); this.tweens.add({ targets: logo, scale: 1.05, yoyo: true, repeat: -1, duration: 500, ease: 'Sine.InOut' }); } });
     this.time.addEvent({ delay: 3000, loop: true, callback: () => { this.tweens.add({ targets: logo, alpha: 0.4, yoyo: true, duration: 50, repeat: 1 }); SFX.buzz(); } });
@@ -505,7 +680,8 @@ class Heist extends Phaser.Scene {
     this.entViews = S.entourage.map((e, i) => this.spawnEnt(e, i));
     // HUD
     this.hud = this.add.graphics().setDepth(60);
-    this.endBtn = iconButton(this, 484, 724, 36, N.gold, (g) => { g.fillStyle(N.ink); g.fillTriangle(-12, -18, -12, 18, 16, 0); g.fillRect(16, -18, 6, 36); }, () => this.endTurn()).setDepth(60);
+    this.hudArt = this.add.container(0, 0).setDepth(60); // painted HUD sprites, emptied and refilled by drawHUD
+    this.endBtn = iconButton(this, 484, 724, 36, N.gold, (g) => { g.fillStyle(N.ink); g.fillTriangle(-12, -18, -12, 18, 16, 0); g.fillRect(16, -18, 6, 36); }, () => this.endTurn(), 'btn_end').setDepth(60);
     this.drawHUD();
     this.ghost = ghostHand(this, 120, 860); this.ghost.hide();
     this.time.delayedCall(350, () => { this.mons.forEach((m) => this.setIntent(m)); this.startTurn(); });
@@ -522,6 +698,7 @@ class Heist extends Phaser.Scene {
     m.zone = this.add.zone(x, 340, 130 * (this.R.kind === 'bride' ? 1.5 : 1), 150).setInteractive({ useHandCursor: true });
     m.zone.on('pointerdown', () => this.tapMon(m));
     m.intentC = null; m.lips = null;
+    m.meterArt = meterArt(this, m); // painted tube + zone hearts (null = vector meter)
     this.drawMeter(m);
     return m;
   }
@@ -531,36 +708,69 @@ class Heist extends Phaser.Scene {
     return { e, view: mc, x, blocks: e.devotion };
   }
   drawHUD() {
-    const g = this.hud; g.clear();
-    g.fillStyle(N.ink, 0.8); g.fillRoundedRect(8, 20, S.maxHats * 34 + 12, 44, 20); glowRect(g, 8, 20, S.maxHats * 34 + 12, 44, 20, N.pink, 1.5);
-    for (let i = 0; i < S.maxHats; i++) hatIcon(g, 31 + i * 34, 54, 13, i < S.hats ? 0xf3ead7 : 0x3a3040, i < S.hats ? N.pink : 0x2a2030);
-    for (let i = 0; i < 3; i++) lipsIcon(g, 40 + i * 52, 724, 17, i < this.energy ? N.pink : N.dim);
-    // entourage devotion / blocks
-    (this.entViews || []).forEach((ev) => { for (let k = 0; k < ev.e.devotion; k++) heart(g, ev.x - (ev.e.devotion - 1) * 8 + k * 16, 584, 6, k < ev.blocks ? N.pink : N.dim); });
-    // deck pile
-    g.fillStyle(N.ink); g.fillRoundedRect(494, 610, 36, 48, 6); g.fillStyle(N.plum); g.fillRoundedRect(497, 613, 30, 42, 5);
-    const left = Math.min(6, S.drawPile ? S.drawPile.length : 0); for (let k = 0; k < left; k++) { g.fillStyle(N.cyan); g.fillRect(500, 652 - k * 6, 24, 3); }
+    const g = this.hud, A = this.hudArt, L = UI_LAYOUT; g.clear(); A.removeAll(true);
+    const hatArt = HASUI('hat'), lipArt = HASUI('lips'), heartArt = HASUI('heart'), backArt = HASUI('card_back');
+    // health hats in the pill (painted: subtler pill, lost hats dark + faded)
+    if (hatArt) { g.fillStyle(N.ink, L.pillAlpha); g.fillRoundedRect(8, 20, S.maxHats * 34 + 12, 44, 20); g.lineStyle(1.5, N.pink, 0.5); g.strokeRoundedRect(8, 20, S.maxHats * 34 + 12, 44, 20); }
+    else { g.fillStyle(N.ink, 0.8); g.fillRoundedRect(8, 20, S.maxHats * 34 + 12, 44, 20); glowRect(g, 8, 20, S.maxHats * 34 + 12, 44, 20, N.pink, 1.5); }
+    for (let i = 0; i < S.maxHats; i++) {
+      if (hatArt) uiDim(uiImg(this, 'hat', 31 + i * 34, L.hatY, L.hat, L.hat, { parent: A }), i >= S.hats, 0.4, 0x444455);
+      else hatIcon(g, 31 + i * 34, 54, 13, i < S.hats ? 0xf3ead7 : 0x3a3040, i < S.hats ? N.pink : 0x2a2030);
+    }
+    // energy lips (spent = dim)
+    for (let i = 0; i < 3; i++) {
+      if (lipArt) uiDim(uiImg(this, 'lips', 40 + i * 52, 724, L.lips[0], L.lips[1], { parent: A }), i >= this.energy, 0.4);
+      else lipsIcon(g, 40 + i * 52, 724, 17, i < this.energy ? N.pink : N.dim);
+    }
+    // entourage devotion / blocks (used block = empty heart, or a dimmed heart without that art)
+    (this.entViews || []).forEach((ev) => {
+      for (let k = 0; k < ev.e.devotion; k++) {
+        const hx = ev.x - (ev.e.devotion - 1) * 8 + k * 16, used = k >= ev.blocks;
+        if (heartArt) { if (used && HASUI('heart_empty')) uiImg(this, 'heart_empty', hx, L.devHeartY, L.devHeart, L.devHeart, { parent: A }); else uiDim(uiImg(this, 'heart', hx, L.devHeartY, L.devHeart, L.devHeart, { parent: A }), used, 0.45); }
+        else heart(g, hx, 584, 6, used ? N.dim : N.pink);
+      }
+    });
+    // deck pile: one painted card back per remaining card (max 6); an empty pile shows one faded back
+    const left = Math.min(6, S.drawPile ? S.drawPile.length : 0);
+    if (backArt) {
+      const [bx, by] = L.deckXY, [sx, sy] = L.deckStep;
+      for (let k = 0; k < Math.max(1, left); k++) uiDim(uiImg(this, 'card_back', bx + k * sx, by + k * sy, L.deck[0], L.deck[1], { parent: A }), left === 0, 0.35);
+    } else {
+      g.fillStyle(N.ink); g.fillRoundedRect(494, 610, 36, 48, 6); g.fillStyle(N.plum); g.fillRoundedRect(497, 613, 30, 42, 5);
+      for (let k = 0; k < left; k++) { g.fillStyle(N.cyan); g.fillRect(500, 652 - k * 6, 24, 3); }
+    }
   }
   drawMeter(m, preview) {
-    const g = m.meter; g.clear(); if (m.stolen) return;
-    const segs = m.zoneMax + 1, x = m.mx, b = m.mBottom, h = m.segH, top = b - segs * h;
-    g.fillStyle(N.ink); g.fillRoundedRect(x - 14, top - 8, 28, segs * h + 16, 12);
-    glowRect(g, x - 14, top - 8, 28, segs * h + 16, 12, m.heat >= m.zoneMin ? N.pink : N.cyan, 2);
+    const g = m.meter, art = m.meterArt; g.clear();
+    if (art) art.setVisible(!m.stolen);
+    if (m.stolen) return;
+    const segs = m.zoneMax + 1, x = m.mx, b = m.mBottom, h = m.segH, top = b - segs * h, ML = UI_LAYOUT.meter;
+    // segment fill column: inset inside the painted glass, or the vector 18px column
+    const fx = art ? x + ML.fillDX - ML.fillW / 2 : x - 9, fw = art ? ML.fillW : 18;
+    if (art) {
+      // painted tube: tint carries the state the vector outline / skull colour used to (in zone = pink, bust = red)
+      const tint = m.heat > m.zoneMax ? 0xff6a6a : m.heat >= m.zoneMin ? 0xffc6dc : null;
+      art.tube.forEach((im) => (tint === null ? im.clearTint() : im.setTint(tint)));
+    } else {
+      g.fillStyle(N.ink); g.fillRoundedRect(x - 14, top - 8, 28, segs * h + 16, 12);
+      glowRect(g, x - 14, top - 8, 28, segs * h + 16, 12, m.heat >= m.zoneMin ? N.pink : N.cyan, 2);
+    }
     for (let s = 0; s < segs - 1; s++) {
       const y = b - (s + 1) * h, inZone = s + 1 >= m.zoneMin;
-      g.fillStyle(inZone ? 0x5a1a3a : 0x23182e); g.fillRect(x - 9, y + 2, 18, h - 3);
-      if (s < m.heat) { const t = s / (segs - 1); g.fillStyle(inZone ? N.pink : Phaser.Display.Color.GetColor(61 + t * 180, 242 - t * 150, 255 - t * 100)); g.fillRect(x - 9, y + 2, 18, h - 3); }
+      g.fillStyle(inZone ? 0x5a1a3a : 0x23182e, art ? (inZone ? ML.zoneAlpha : ML.slotAlpha) : 1); g.fillRect(fx, y + 2, fw, h - 3);
+      if (s < m.heat) { const t = s / (segs - 1); g.fillStyle(inZone ? N.pink : Phaser.Display.Color.GetColor(61 + t * 180, 242 - t * 150, 255 - t * 100)); g.fillRect(fx, y + 2, fw, h - 3); }
     }
     // zone hearts on the side
-    for (let s = m.zoneMin; s <= m.zoneMax; s++) heart(g, x - 22, b - s * h + h / 2 - 2, 4, N.pink, m.heat === s ? 1 : 0.6);
-    // skull cap
-    const sy = top + h / 2 - 2; g.fillStyle(N.ink); g.fillCircle(x, sy, 10); g.fillStyle(m.heat > m.zoneMax ? N.red : 0xf3ead7); g.fillCircle(x, sy - 1, 8); g.fillRect(x - 5, sy + 3, 10, 5); g.fillStyle(N.ink); g.fillCircle(x - 3, sy - 1, 2.2); g.fillCircle(x + 3, sy - 1, 2.2);
+    if (art && art.hearts.length) art.hearts.forEach(({ z, im }) => im.setAlpha(m.heat === z ? 1 : 0.6));
+    else for (let s = m.zoneMin; s <= m.zoneMax; s++) heart(g, art ? x - ML.heartDX : x - 22, b - s * h + h / 2 - 2, 4, N.pink, m.heat === s ? 1 : 0.6);
+    // skull cap (the painted tube has its own)
+    if (!art) { const sy = top + h / 2 - 2; g.fillStyle(N.ink); g.fillCircle(x, sy, 10); g.fillStyle(m.heat > m.zoneMax ? N.red : 0xf3ead7); g.fillCircle(x, sy - 1, 8); g.fillRect(x - 5, sy + 3, 10, 5); g.fillStyle(N.ink); g.fillCircle(x - 3, sy - 1, 2.2); g.fillCircle(x + 3, sy - 1, 2.2); }
     if (preview && !m.stolen) {
-      if (preview.sym === 'ice') { const to = Math.max(0, m.heat - 2); for (let s = to; s < m.heat; s++) { g.fillStyle(N.ice, 0.6); g.fillRect(x - 9, b - (s + 1) * h + 2, 18, h - 3); } }
+      if (preview.sym === 'ice') { const to = Math.max(0, m.heat - 2); for (let s = to; s < m.heat; s++) { g.fillStyle(N.ice, 0.6); g.fillRect(fx, b - (s + 1) * h + 2, fw, h - 3); } }
       else {
         const match = preview.sym === 'wild' || m.look.markers.includes(preview.sym);
         const sol = preview.solid + (match ? 1 : 0);
-        for (let s = m.heat; s < m.heat + sol + preview.ghost; s++) { if (s >= segs) break; const y = b - (s + 1) * h; g.fillStyle(N.white, s < m.heat + sol ? 0.55 : 0.2); g.fillRect(x - 9, y + 2, 18, h - 3); if (s >= m.heat + sol) { g.lineStyle(1.5, N.white, 0.7); g.strokeRect(x - 9, y + 2, 18, h - 3); } }
+        for (let s = m.heat; s < m.heat + sol + preview.ghost; s++) { if (s >= segs) break; const y = b - (s + 1) * h; g.fillStyle(N.white, s < m.heat + sol ? 0.55 : 0.2); g.fillRect(fx, y + 2, fw, h - 3); if (s >= m.heat + sol) { g.lineStyle(1.5, N.white, 0.7); g.strokeRect(fx, y + 2, fw, h - 3); } }
         if (match) { g.lineStyle(3, N.gold, 1); if (m.view.badgeY !== undefined) g.strokeRoundedRect(m.x - 38 * m.view.scaleX, 404 + (m.view.badgeY - 19) * m.view.scaleY, 76 * m.view.scaleX, 38 * m.view.scaleY, 14); else g.strokeCircle(m.x, 404 - 48 * m.look.size + 19 * m.look.size, 30 * m.look.size); }
       }
     }
@@ -569,15 +779,21 @@ class Heist extends Phaser.Scene {
     if (m.stolen) return;
     m.intent = this.R.intent(this.turn + m.i);
     if (m.intentC) m.intentC.destroy();
-    const g = this.add.graphics(), w = 30 + m.intent.n * 20;
-    g.fillStyle(N.ink); g.fillRoundedRect(-w / 2, -20, w, 40, 14); g.fillStyle(N.white); g.fillRoundedRect(-w / 2 + 4, -16, w - 8, 32, 11);
+    const g = this.add.graphics(), w = 30 + m.intent.n * 20, BL = UI_LAYOUT.bubble, kids = [];
+    // painted speech bubble (stretched to the intent width) holding painted fangs / snowflakes
+    const bub = uiImg(this, 'bubble', 0, BL.dy, 1, 1);
+    if (bub) { bub.setDisplaySize(w + BL.padX, BL.h); kids.push(bub); }
+    else { g.fillStyle(N.ink); g.fillRoundedRect(-w / 2, -20, w, 40, 14); g.fillStyle(N.white); g.fillRoundedRect(-w / 2 + 4, -16, w - 8, 32, 11); }
+    kids.push(g);
     for (let k = 0; k < m.intent.n; k++) {
-      const ix = (k - (m.intent.n - 1) / 2) * 22;
-      if (m.intent.k === 'fang') { g.fillStyle(N.ink); g.fillTriangle(ix - 9, -10, ix + 9, -10, ix, 13); g.fillStyle(N.red); g.fillTriangle(ix - 6, -8, ix + 6, -8, ix, 9); }
-      else drawSym(g, 'ice', ix, 0, 9);
+      const ix = (k - (m.intent.n - 1) / 2) * (bub ? BL.gap : 22), iy = bub ? BL.iconDY : 0;
+      const icon = m.intent.k === 'fang' ? uiImg(this, 'fang', ix, iy, BL.icon) : symImg(this, 'ice', ix, iy, BL.icon);
+      if (icon) kids.push(icon);
+      else if (m.intent.k === 'fang') { g.fillStyle(N.ink); g.fillTriangle(ix - 9, iy - 10, ix + 9, iy - 10, ix, iy + 13); g.fillStyle(N.red); g.fillTriangle(ix - 6, iy - 8, ix + 6, iy - 8, ix, iy + 9); }
+      else drawSym(g, 'ice', ix, iy, 9);
     }
     const top = m.mBottom - (m.zoneMax + 1) * m.segH - 32;
-    m.intentC = this.add.container(m.mx, top, [g]).setDepth(25);
+    m.intentC = this.add.container(m.mx, top, kids).setDepth(25);
     this.tweens.add({ targets: m.intentC, y: top - 6, yoyo: true, repeat: -1, duration: 420 });
   }
   startTurn() {
@@ -638,7 +854,8 @@ class Heist extends Phaser.Scene {
       for (let k = 0; k < solid; k++) { m.heat++; SFX.tick(m.heat); this.drawMeter(m); burst(this, m.mx, m.mBottom - m.heat * m.segH, 'pFlame', 3); await this.wait(150); if (m.heat > m.zoneMax) break; }
       for (let k = 0; k < card.ghost && m.heat <= m.zoneMax; k++) {
         // flickering ghost flame: the gamble
-        const fg = this.add.graphics().setDepth(90); flamePip(fg, 0, 0, 16, true);
+        let fg = uiImg(this, 'flame_ghost', 0, 0, UI_LAYOUT.ghostFlame);
+        if (!fg) { fg = this.add.graphics().setDepth(90); flamePip(fg, 0, 0, 16, true); }
         const fc = this.add.container(m.mx, m.mBottom - (m.heat + 1) * m.segH, [fg]).setDepth(90);
         const fl = this.tweens.add({ targets: fc, alpha: 0.2, yoyo: true, repeat: -1, duration: 70 });
         for (let q = 0; q < 4; q++) { SFX.ghost(); await this.wait(110); }
@@ -662,7 +879,7 @@ class Heist extends Phaser.Scene {
       m.view.redraw('smitten');
       if (!m.lips) {
         const ly = Math.max(150, 404 - 172 * m.look.size - 34);
-        m.lips = iconButton(this, m.x, ly, 30, N.pink, (g) => lipsIcon(g, 0, 0, 17, N.red), () => this.smooch(m)).setDepth(80);
+        m.lips = iconButton(this, m.x, ly, 30, N.pink, (g) => lipsIcon(g, 0, 0, 17, N.red), () => this.smooch(m), 'btn_smooch').setDepth(80);
         m.lips.setScale(0); this.tweens.add({ targets: m.lips, scale: 1, duration: 300, ease: 'Back.Out' });
         this.tweens.add({ targets: m.lips, angle: { from: -8, to: 8 }, yoyo: true, repeat: -1, duration: 220, delay: 300 });
         if (!this.hinted.lips && S.round === 0) { this.hinted.lips = true; this.ghost.move(m.x + 14, ly + 10); }
@@ -748,7 +965,7 @@ class Heist extends Phaser.Scene {
   }
   lose() {
     if (this.over) return; this.over = true; SFX.lose(); this.ghost.hide();
-    const h = this.add.image(470, 410, 'pHat').setScale(2.2 / RES).setDepth(120);
+    const h = pImage(this, 470, 410, 'pHat', 2.2).setDepth(120);
     this.tweens.add({ targets: h, x: 120, y: 900, angle: -720, duration: 1400, ease: 'Bounce.Out' });
     this.tweens.add({ targets: this.thief, y: 1200, duration: 900, delay: 300, ease: 'Cubic.In' });
     this.time.delayedCall(2400, () => { S.drawPile = null; this.scene.start('Results', { win: false }); });
@@ -759,7 +976,7 @@ class Heist extends Phaser.Scene {
     let risk = 0; this.targets().forEach((m) => { risk = Math.max(risk, m.heat / (m.zoneMax + 1)); });
     if (risk < 0.45) return;
     this.beatAcc += dt; const interval = Phaser.Math.Linear(1000, 330, (risk - 0.45) / 0.55);
-    if (this.beatAcc >= interval) { this.beatAcc = 0; SFX.beat(0.6 + risk * 0.6); this.targets().forEach((m) => { if (m.heat / (m.zoneMax + 1) >= 0.45) this.tweens.add({ targets: m.meter, alpha: 0.6, yoyo: true, duration: 70 }); }); }
+    if (this.beatAcc >= interval) { this.beatAcc = 0; SFX.beat(0.6 + risk * 0.6); this.targets().forEach((m) => { if (m.heat / (m.zoneMax + 1) >= 0.45) this.tweens.add({ targets: m.meterArt ? [m.meter, m.meterArt] : m.meter, alpha: 0.6, yoyo: true, duration: 70 }); }); }
   }
 }
 
@@ -789,19 +1006,32 @@ class Booth extends Phaser.Scene {
     this.crank.add(cg); this.crank.setSize(120, 160).setInteractive({ useHandCursor: true }); this.crank.on('pointerdown', () => this.pull());
     if (this.machine) cg.setVisible(false);
     this.add.zone(mx, my - 40, 240, 300).setInteractive({ useHandCursor: true }).on('pointerdown', () => this.pull());
-    // token jar
-    this.jar = this.add.graphics(); this.drawJar();
+    // token jar (painted: a Container refilled by drawJar, so the shake tween on this.jar.x still works)
+    this.jar = HASUI('jar') || HASUI('token') ? this.add.container(0, 0) : this.add.graphics(); this.drawJar();
     // entourage cheering on the ground
     S.entourage.forEach((e, i) => { const mc = makeMonster(this, 40 + i * 60, 940, e.look, 0.36 / e.look.size); mc.redraw('smitten'); this.tweens.add({ targets: mc, y: 926, yoyo: true, repeat: -1, duration: 300 + i * 40 }); });
     this.thief = drawThief(this, 470, 900, 0.6);
     // continue arrow
-    this.next = iconButton(this, W / 2, 860, 40, N.lime, (ag) => { ag.fillStyle(N.ink); ag.fillTriangle(-12, -20, -12, 20, 20, 0); }, () => this.leave()).setDepth(60);
+    this.next = iconButton(this, W / 2, 860, 40, N.lime, (ag) => { ag.fillStyle(N.ink); ag.fillTriangle(-12, -20, -12, 20, 20, 0); }, () => this.leave(), 'btn_next').setDepth(60);
     this.tweens.add({ targets: this.next, scale: 1.1, yoyo: true, repeat: -1, duration: 400 });
     this.ghost = ghostHand(this, mx + 160, my + 20);
     if (S.tokens < 2) { this.ghost.move(W / 2 + 14, 870); this.crank.setAlpha(0.5); }
   }
   drawJar() {
-    const g = this.jar; g.clear(); const x = 70, y = 700;
+    const x = 70, y = 700;
+    if (this.jar.type === 'Container') {
+      const J = UI_LAYOUT.jar, c = this.jar; c.removeAll(true);
+      const cg = this.add.graphics(); // vector jar / coins for whichever of ui_jar, ui_token is missing
+      const jarIm = uiImg(this, 'jar', J.x, J.y, J.w, J.h, { parent: c });
+      if (!jarIm) { cg.fillStyle(N.ink); cg.fillRoundedRect(x - 46, y - 110, 92, 140, 18); cg.fillStyle(0xbfe8f0, 0.35); cg.fillRoundedRect(x - 40, y - 104, 80, 128, 14); cg.fillStyle(N.gold); cg.fillRect(x - 42, y - 122, 84, 14); }
+      c.add(cg);
+      // coins stack up from the painted jar's real bottom edge (any aspect), else from the vector jar's floor
+      const cx0 = jarIm ? jarIm.x : x, cy0 = jarIm ? jarIm.y + jarIm.displayHeight / 2 - J.coinBot : y + 6;
+      const dx = jarIm ? Math.min(J.coinStep[0], jarIm.displayWidth * 0.22) : 20, dy = jarIm ? J.coinStep[1] : 22;
+      for (let i = 0; i < S.tokens; i++) { const cx = cx0 + ((i % 3) - 1) * dx, cy = cy0 - Math.floor(i / 3) * dy; if (!uiImg(this, 'token', cx, cy, J.coin, J.coin, { parent: c })) { heart(cg, cx, cy, 10, N.ink); heart(cg, cx, cy, 7.5, N.gold); } }
+      return;
+    }
+    const g = this.jar; g.clear();
     g.fillStyle(N.ink); g.fillRoundedRect(x - 46, y - 110, 92, 140, 18); g.fillStyle(0xbfe8f0, 0.35); g.fillRoundedRect(x - 40, y - 104, 80, 128, 14); g.fillStyle(N.gold); g.fillRect(x - 42, y - 122, 84, 14);
     for (let i = 0; i < S.tokens; i++) { const cx = x - 20 + (i % 3) * 20, cy = y + 6 - Math.floor(i / 3) * 22; heart(g, cx, cy, 10, N.ink); heart(g, cx, cy, 7.5, N.gold); }
   }
@@ -812,7 +1042,7 @@ class Booth extends Phaser.Scene {
     // two tokens fly into the slot
     for (let k = 0; k < 2; k++) {
       S.tokens--; this.drawJar();
-      const t = this.add.image(70, 680, 'pCoin').setScale(1.5 / RES).setDepth(80);
+      const t = pImage(this, 70, 680, 'pCoin', 1.5).setDepth(80);
       this.tweens.add({ targets: t, x: W / 2, y: 557, duration: 300, delay: k * 120, ease: 'Cubic.In', onComplete: () => { SFX.coin(); t.destroy(); } });
     }
     await new Promise((r) => this.time.delayedCall(450, r));
@@ -826,8 +1056,9 @@ class Booth extends Phaser.Scene {
     if (rarity === 2) card = mkCard('wild', 3, 0, 2);
     else if (rarity === 1) card = pick([mkCard('wild', 1, 1, 1), mkCard(pick(SYMS), 2, 1, 1), mkCard('ice', 0, 0, 1), mkCard(pick(SYMS), 1, 2, 1)]);
     else card = pick([mkCard(pick(SYMS), 2, 0, 0), mkCard(pick(SYMS), 1, 1, 0), mkCard(pick(SYMS), 1, 0, 0)]);
-    const cap = this.add.container(W / 2, 680).setDepth(90), capG = this.add.graphics(); cap.add(capG);
-    capG.fillStyle(N.ink); capG.fillCircle(0, 0, 34); capG.fillStyle(RAR[rarity]); capG.fillCircle(0, 0, 30); capG.fillStyle(N.white, 0.7); capG.fillRect(-30, -3, 60, 6); capG.fillStyle(N.white, 0.5); capG.fillCircle(-10, -12, 8);
+    const cap = this.add.container(W / 2, 680).setDepth(90), capIm = uiImg(this, 'capsule_' + RARN[rarity], 0, 0, UI_LAYOUT.capsule);
+    if (capIm) cap.add(capIm);
+    else { const capG = this.add.graphics(); cap.add(capG); capG.fillStyle(N.ink); capG.fillCircle(0, 0, 34); capG.fillStyle(RAR[rarity]); capG.fillCircle(0, 0, 30); capG.fillStyle(N.white, 0.7); capG.fillRect(-30, -3, 60, 6); capG.fillStyle(N.white, 0.5); capG.fillCircle(-10, -12, 8); }
     cap.setScale(0.4);
     await new Promise((res) => this.tweens.add({ targets: cap, y: 760, scale: 1.2, angle: 360, duration: 500, ease: 'Bounce.Out', onComplete: res }));
     // shake harder for rarer
@@ -870,16 +1101,20 @@ class Results extends Phaser.Scene {
       const thief = drawThief(this, 170, 800, 1.1); this.time.addEvent({ delay: 900, loop: true, callback: () => thief.twirl() });
       SFX.laugh(); this.time.delayedCall(800, () => SFX.win());
       this.time.addEvent({ delay: 350, loop: true, callback: () => burst(this, Phaser.Math.Between(40, 500), Phaser.Math.Between(100, 350), pick(['pHeart', 'pCoin', 'pSpark']), 16, undefined, { gravityY: 150 }) });
-      const lg = this.add.graphics(); lipsIcon(lg, -60, 0, 34); heart(lg, 30, -6, 32, N.pink); lg.fillStyle(N.gold); star(lg, 90, -30, 18, N.gold);
-      const logo = this.add.container(W / 2 - 60, 160, [lg]); this.tweens.add({ targets: logo, scale: 1.1, yoyo: true, repeat: -1, duration: 400 });
+      const lg = this.add.graphics(), kids = [lg];
+      if (HASUI('lips') && HASUI('heart')) {
+        kids.push(uiImg(this, 'lips', -60, 0, 84, 60), uiImg(this, 'heart', 30, -2, 70, 70));
+        const st = symImg(this, 'star', 90, -30, 40); if (st) kids.push(st); else star(lg, 90, -30, 18, N.gold);
+      } else { lipsIcon(lg, -60, 0, 34); heart(lg, 30, -6, 32, N.pink); lg.fillStyle(N.gold); star(lg, 90, -30, 18, N.gold); }
+      const logo = this.add.container(W / 2 - 60, 160, kids); this.tweens.add({ targets: logo, scale: 1.1, yoyo: true, repeat: -1, duration: 400 });
     } else {
       const sg = this.add.graphics(); sg.fillStyle(N.ink); sg.fillRoundedRect(10, 560, W - 20, 40, 12); sg.fillStyle(0x5a2a3a); sg.fillRoundedRect(16, 562, W - 32, 28, 10);
-      const h = this.add.image(-40, 540, 'pHat').setScale(3 / RES);
+      const h = pImage(this, -40, 540, 'pHat', 3);
       this.tweens.add({ targets: h, x: W + 60, angle: 720, duration: 3500, repeat: -1, delay: 400 });
-      const tg = this.add.graphics(); teethIcon(tg, 0, 0, 60); const t = this.add.container(W / 2, 300, [tg]);
+      const tg = teethArt(this, 0, 0, 150, 108) || this.add.graphics(); if (tg.type === 'Graphics') teethIcon(tg, 0, 0, 60); const t = this.add.container(W / 2, 300, [tg]);
       this.tweens.add({ targets: t, scaleY: 0.7, yoyo: true, repeat: -1, duration: 250 }); SFX.chomp();
     }
-    const replay = iconButton(this, W / 2, data.win ? 640 : 780, 46, N.lime, (rg) => { rg.lineStyle(9, N.ink); rg.beginPath(); rg.arc(0, 0, 20, -2.6, 2.2); rg.strokePath(); rg.fillStyle(N.ink); rg.fillTriangle(-24, -28, -2, -16, -24, -2); }, () => { resetRun(); this.scene.start('Heist'); });
+    const replay = iconButton(this, W / 2, data.win ? 640 : 780, 46, N.lime, (rg) => { rg.lineStyle(9, N.ink); rg.beginPath(); rg.arc(0, 0, 20, -2.6, 2.2); rg.strokePath(); rg.fillStyle(N.ink); rg.fillTriangle(-24, -28, -2, -16, -24, -2); }, () => { resetRun(); this.scene.start('Heist'); }, 'btn_replay');
     replay.setScale(0); this.tweens.add({ targets: replay, scale: 1, duration: 500, delay: 1200, ease: 'Back.Out' });
     this.replay = replay;
   }
